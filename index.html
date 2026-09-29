@@ -20,6 +20,7 @@
       rel="stylesheet">
 
 <!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm/vision_wasm_internal.js"></script>
 
 <style>
 
@@ -690,7 +691,6 @@ button:active {
 }
 
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 </head>
 
 <body>
@@ -948,19 +948,6 @@ button:active {
 
 
 <script>
-
-/* =====================================================
-   MEDIA PIPE
-===================================================== */
-
-
-
-
-/* =====================================================
-   CONFIG
-===================================================== */
-
-
 /* =====================================================
    ELEMENT
 ===================================================== */
@@ -1503,12 +1490,12 @@ function createBubbles(player) {
           Math.random()*0.34,
 
         y:
-          -0.10 -
-          Math.random()*0.65,
+          -0.02 -
+          Math.random()*0.35,
 
         speed:
-          0.00025 +
-          Math.random()*0.00014,
+          0.000055 +
+          Math.random()*0.000025,
 
         radius:
           0.060,
@@ -1579,20 +1566,24 @@ function loadQuestion() {
 
 async function startCamera() {
 
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    throw new Error("Browser tidak mendukung kamera. Gunakan Chrome/Edge terbaru melalui HTTPS.");
-  }
-
   const stream =
     await navigator
       .mediaDevices
       .getUserMedia({
 
         video:{
-          facingMode:{ideal:"user"},
-          width:{ideal:1280},
-          height:{ideal:720}
+          width:{
+            ideal:1280
+          },
+
+          height:{
+            ideal:720
+          },
+
+          facingMode:
+            "user"
         },
+
         audio:false
 
       });
@@ -1613,7 +1604,7 @@ async function startCamera() {
 
 async function initializeMediaPipe() {
   if (typeof Hands === "undefined") {
-    throw new Error("MediaPipe Hands gagal dimuat dari jsDelivr. Pastikan internet aktif dan CDN tidak diblokir jaringan sekolah.");
+    throw new Error("MediaPipe Hands gagal dimuat. Pastikan internet aktif.");
   }
 
   handLandmarker = new Hands({
@@ -1623,8 +1614,8 @@ async function initializeMediaPipe() {
   handLandmarker.setOptions({
     maxNumHands: 2,
     modelComplexity: 1,
-    minDetectionConfidence: 0.5,
-    minTrackingConfidence: 0.5
+    minDetectionConfidence: 0.45,
+    minTrackingConfidence: 0.45
   });
 
   handLandmarker.onResults((results) => {
@@ -1632,7 +1623,7 @@ async function initializeMediaPipe() {
   });
 
   latestHandResults = null;
-  await handLandmarker.send({ image: camera });
+  handProcessing = false;
 }
 
 let latestHandResults = null;
@@ -1643,15 +1634,924 @@ async function handDetectionLoop(){
   handProcessing = true;
   try {
     if (camera.readyState >= 2 && camera.videoWidth > 0) {
-      await handLandmarker.send({ image: camera });
+      await handLandmarker.send({image: camera});
     }
-  } catch (error) {
+  } catch(error) {
     console.error("MediaPipe Hands error:", error);
   } finally {
     handProcessing = false;
   }
   if (gameRunning) requestAnimationFrame(handDetectionLoop);
 }
+
+
+/* =====================================================
+   DETECT FIVE FINGERS
+===================================================== */
+
+function detectFiveFinger(lm) {
+
+  if(
+    !lm ||
+    lm.length < 21
+  ){
+
+    return false;
+
+  }
+
+
+  /*
+    Jari:
+    index 8
+    middle 12
+    ring 16
+    pinky 20
+  */
+
+  const index =
+    lm[8].y <
+    lm[6].y -
+    0.025;
+
+
+  const middle =
+    lm[12].y <
+    lm[10].y -
+    0.025;
+
+
+  const ring =
+    lm[16].y <
+    lm[14].y -
+    0.025;
+
+
+  const pinky =
+    lm[20].y <
+    lm[18].y -
+    0.025;
+
+
+  /*
+    Ibu jari
+  */
+
+  const palmX =
+    (
+      lm[0].x +
+      lm[5].x +
+      lm[9].x +
+      lm[13].x +
+      lm[17].x
+    ) / 5;
+
+
+  const palmY =
+    (
+      lm[0].y +
+      lm[5].y +
+      lm[9].y +
+      lm[13].y +
+      lm[17].y
+    ) / 5;
+
+
+  const thumbDistance =
+    Math.hypot(
+      lm[4].x - palmX,
+      lm[4].y - palmY
+    );
+
+
+  const thumbJoint =
+    Math.hypot(
+      lm[3].x - palmX,
+      lm[3].y - palmY
+    );
+
+
+  const thumb =
+    thumbDistance >
+    thumbJoint *
+    1.10;
+
+
+  const count =
+    [
+      thumb,
+      index,
+      middle,
+      ring,
+      pinky
+    ]
+    .filter(Boolean)
+    .length;
+
+
+  return count >= 3;
+
+}
+
+
+/* =====================================================
+   PALM CENTER
+===================================================== */
+
+function getPalm(lm) {
+
+  return {
+
+    x:
+      (
+        lm[0].x +
+        lm[5].x +
+        lm[9].x +
+        lm[13].x +
+        lm[17].x
+      ) / 5,
+
+    y:
+      (
+        lm[0].y +
+        lm[5].y +
+        lm[9].y +
+        lm[13].y +
+        lm[17].y
+      ) / 5
+
+  };
+
+}
+
+
+/* =====================================================
+   COLLISION
+===================================================== */
+
+function collision(
+  hand,
+  bubble
+){
+
+  if(
+    !hand ||
+    !bubble ||
+    !hand.open ||
+    bubble.hit
+  ){
+
+    return false;
+
+  }
+
+
+  const dx =
+    hand.x -
+    bubble.x;
+
+
+  const dy =
+    hand.y -
+    bubble.y;
+
+
+  const distance =
+    Math.sqrt(
+      dx*dx +
+      dy*dy
+    );
+
+
+  /*
+    Radius tangan
+    + radius lingkaran
+  */
+
+  return (
+    distance <
+    (
+      0.12 +
+      bubble.radius
+    )
+  );
+
+}
+
+
+/* =====================================================
+   ANSWER
+===================================================== */
+
+function catchAnswer(
+  player,
+  bubble
+){
+
+  if(
+    players[player].locked
+  ){
+
+    return;
+
+  }
+
+
+  bubble.hit =
+    true;
+
+
+  players[player].locked =
+    true;
+
+
+  const q =
+    QUESTIONS[currentQuestion];
+
+
+  const correct =
+    bubble.text ===
+    q.correct;
+
+
+  if(player === 1){
+
+    if(correct){
+
+      scoreP1 += 10;
+
+    }
+
+  }else{
+
+    if(correct){
+
+      scoreP2 += 10;
+
+    }
+
+  }
+
+
+  updateScores();
+
+
+  if(correct){
+
+    showCorrect(
+      player
+    );
+
+  }else{
+
+    showWrong(
+      player,
+      q.explanation
+    );
+
+  }
+
+
+  /*
+    Jika kedua pemain
+    sudah menjawab
+  */
+
+  if(
+    players[1].locked &&
+    players[2].locked
+  ){
+
+    setTimeout(
+      nextQuestion,
+      1500
+    );
+
+  }
+
+}
+
+
+/* =====================================================
+   FEEDBACK
+===================================================== */
+
+function showCorrect(
+  player
+){
+
+  const element =
+    player === 1
+    ? feedback1
+    : feedback2;
+
+
+  element.textContent =
+    "⭐ BENAR! +10";
+
+
+  element.className =
+    "feedback correct";
+
+
+  playSound(true);
+
+}
+
+
+function showWrong(
+  player,
+  explanation
+){
+
+  const element =
+    player === 1
+    ? feedback1
+    : feedback2;
+
+
+  element.textContent =
+    "💡 " +
+    explanation;
+
+
+  element.className =
+    "feedback wrong";
+
+
+  playSound(false);
+
+}
+
+
+/* =====================================================
+   SOUND
+===================================================== */
+
+let audioContext =
+  null;
+
+
+function playSound(
+  correct
+){
+
+  try{
+
+    if(!audioContext){
+
+      audioContext =
+        new (
+          window.AudioContext ||
+          window.webkitAudioContext
+        )();
+
+    }
+
+
+    const oscillator =
+      audioContext
+        .createOscillator();
+
+
+    const gain =
+      audioContext
+        .createGain();
+
+
+    oscillator.connect(gain);
+
+    gain.connect(
+      audioContext.destination
+    );
+
+
+    oscillator.frequency.value =
+      correct
+      ? 720
+      : 180;
+
+
+    oscillator.type =
+      "sine";
+
+
+    gain.gain.setValueAtTime(
+      .0001,
+      audioContext.currentTime
+    );
+
+
+    gain.gain.exponentialRampToValueAtTime(
+      .15,
+      audioContext.currentTime +
+      .01
+    );
+
+
+    gain.gain.exponentialRampToValueAtTime(
+      .0001,
+      audioContext.currentTime +
+      .25
+    );
+
+
+    oscillator.start();
+
+    oscillator.stop(
+      audioContext.currentTime +
+      .26
+    );
+
+  }catch(e){}
+
+}
+
+
+/* =====================================================
+   DRAW GAME
+===================================================== */
+
+function drawGame(
+  result
+){
+
+  const width =
+    canvas.width;
+
+
+  const height =
+    canvas.height;
+
+
+  ctx.clearRect(
+    0,
+    0,
+    width,
+    height
+  );
+
+
+  /*
+    Garis tengah
+  */
+
+  ctx.save();
+
+  ctx.strokeStyle =
+    "rgba(255,255,255,.4)";
+
+  ctx.lineWidth =
+    4;
+
+  ctx.setLineDash(
+    [15,15]
+  );
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    width/2,
+    0
+  );
+
+  ctx.lineTo(
+    width/2,
+    height
+  );
+
+  ctx.stroke();
+
+  ctx.restore();
+
+
+  /*
+    Tangan
+  */
+
+  (result.multiHandLandmarks || result.landmarks || [])
+    .forEach(
+      (landmarks)=>{
+
+        const palm =
+          getPalm(
+            landmarks
+          );
+
+
+        const open =
+          detectFiveFinger(
+            landmarks
+          );
+
+
+        const displayX = 1 - palm.x;
+
+        const player =
+          displayX < .5
+          ? 1
+          : 2;
+
+
+        players[player].hand = {
+
+          x:displayX,
+
+          y:palm.y,
+
+          open:open
+
+        };
+
+
+        players[player].open =
+          open;
+
+
+        /*
+          Lingkaran tangan
+        */
+
+        const x =
+          displayX *
+          width;
+
+
+        const y =
+          palm.y *
+          height;
+
+
+        ctx.beginPath();
+
+
+        ctx.arc(
+          x,
+          y,
+          open
+          ? 55
+          : 38,
+          0,
+          Math.PI*2
+        );
+
+
+        ctx.fillStyle =
+          open
+
+          ?
+
+          (
+            player === 1
+            ? "rgba(34,197,94,.25)"
+            : "rgba(168,85,247,.25)"
+          )
+
+          :
+
+          "rgba(245,158,11,.25)";
+
+
+        ctx.fill();
+
+
+        ctx.strokeStyle =
+          open
+
+          ?
+
+          (
+            player === 1
+            ? "#22c55e"
+            : "#a855f7"
+          )
+
+          :
+
+          "#f59e0b";
+
+
+        ctx.lineWidth =
+          5;
+
+
+        ctx.stroke();
+
+
+        /*
+          Icon tangan
+        */
+
+        ctx.font =
+          "35px Arial";
+
+
+        ctx.textAlign =
+          "center";
+
+
+        ctx.fillStyle =
+          "#ffffff";
+
+
+        ctx.fillText(
+          open
+          ? "🖐️"
+          : "✋",
+          x,
+          y+12
+        );
+
+        // Titik landmark tangan agar mudah memastikan deteksi bekerja
+        landmarks.forEach((pt)=>{
+          const hx = (1-pt.x) * width;
+          const hy = pt.y * height;
+          ctx.beginPath();
+          ctx.arc(hx, hy, 5, 0, Math.PI*2);
+          ctx.fillStyle = open ? "#ffffff" : "#fbbf24";
+          ctx.fill();
+        });
+
+      }
+    );
+
+
+  /*
+    Update & draw
+    lingkaran jawaban
+  */
+
+  [1,2].forEach(
+    player=>{
+
+      players[player]
+        .bubbles
+        .forEach(
+          bubble=>{
+
+            if(
+              bubble.hit
+            ){
+
+              return;
+
+            }
+
+
+            /*
+              Gerakkan turun
+            */
+
+            bubble.y += bubble.speed * dt * 60;
+
+
+            /*
+              Jika lewat bawah
+            */
+
+            if(
+              bubble.y >
+              1.15
+            ){
+
+              bubble.y =
+                -0.15 -
+                Math.random()*.4;
+
+              bubble.x =
+                player === 1
+                ?
+                .08 +
+                Math.random()*.40
+                :
+                .58 +
+                Math.random()*.34;
+
+            }
+
+
+            /*
+              Collision
+            */
+
+            if(
+              collision(
+                players[player].hand,
+                bubble
+              )
+            ){
+
+              catchAnswer(
+                player,
+                bubble
+              );
+
+            }
+
+
+            /*
+              Draw circle
+            */
+
+            const x =
+              bubble.x *
+              width;
+
+
+            const y =
+              bubble.y *
+              height;
+
+
+            const radius =
+              bubble.radius *
+              Math.min(
+                width,
+                height
+              );
+
+
+            /*
+              Gradient
+            */
+
+            const gradient =
+              ctx.createRadialGradient(
+                x-radius*.35,
+                y-radius*.35,
+                radius*.1,
+                x,
+                y,
+                radius
+              );
+
+
+            if(player === 1){
+
+              gradient.addColorStop(
+                0,
+                "#bbf7d0"
+              );
+
+              gradient.addColorStop(
+                1,
+                "#16a34a"
+              );
+
+            }else{
+
+              gradient.addColorStop(
+                0,
+                "#e9d5ff"
+              );
+
+              gradient.addColorStop(
+                1,
+                "#7e22ce"
+              );
+
+            }
+
+
+            ctx.beginPath();
+
+            ctx.arc(
+              x,
+              y,
+              radius,
+              0,
+              Math.PI*2
+            );
+
+
+            ctx.fillStyle =
+              gradient;
+
+
+            ctx.fill();
+
+
+            ctx.strokeStyle =
+              "#ffffff";
+
+
+            ctx.lineWidth =
+              4;
+
+
+            ctx.stroke();
+
+
+            /*
+              Teks jawaban
+            */
+
+            ctx.fillStyle =
+              "#ffffff";
+
+
+            ctx.font =
+              "900 16px Nunito";
+
+
+            ctx.textAlign =
+              "center";
+
+
+            /*
+              Wrap text
+            */
+
+            const words =
+              bubble.text
+                .split(" ");
+
+
+            const lines =
+              [];
+
+
+            let line =
+              "";
+
+
+            words.forEach(
+              word=>{
+
+                const test =
+                  line
+                  ? line +
+                    " " +
+                    word
+                  : word;
+
+
+                if(
+                  ctx.measureText(
+                    test
+                  ).width >
+                  radius*1.55 &&
+                  line
+                ){
+
+                  lines.push(
+                    line
+                  );
+
+                  line =
+                    word;
+
+                }else{
+
+                  line =
+                    test;
+
+                }
+
+              }
+            );
+
+
+            if(line){
+
+              lines.push(
+                line
+              );
+
+            }
+
+
+            lines
+              .slice(0,3)
+              .forEach(
+                (text,index)=>{
+
+                  ctx.fillText(
+                    text,
+                    x,
+                    y +
+                    (
+                      index -
+                      (
+                        Math.min(
+                          lines.length,
+                          3
+                        )-1
+                      )/2
+                    )*20
+                  );
+
+                }
+              );
+
+          }
+        );
+
+    }
+  );
+
+}
+
 
 /* =====================================================
    DETECTION LOOP
@@ -1670,11 +2570,17 @@ async function gameLoop(){
 
   try{
 
-    const now =
-      performance.now();
+    const now = performance.now();
+    const dt = lastTimestamp ? Math.min((now-lastTimestamp)/1000, 0.05) : 0.016;
+    lastTimestamp = now;
 
 
-    const result = latestHandResults || { landmarks: [] };
+    const result =
+      handLandmarker
+        .detectForVideo(
+          camera,
+          now
+        );
 
 
     canvas.width =
@@ -1715,8 +2621,6 @@ async function gameLoop(){
 
   }
 
-
-  handDetectionLoop();
 
   animationFrame =
     requestAnimationFrame(
@@ -1796,17 +2700,15 @@ async function startGame(){
 
     errorBox.style.display =
       "none";
-    errorBox.textContent = "📷 Meminta izin kamera...";
 
 
     startButton.disabled =
       true;
 
 
-    // Kamera diminta TERLEBIH DAHULU agar dialog izin kamera muncul.
     await startCamera();
 
-    // Setelah kamera aktif, baru memuat MediaPipe.
+
     await initializeMediaPipe();
 
 
@@ -1857,19 +2759,8 @@ async function startGame(){
       "block";
 
 
-    let message = error?.message || String(error);
-
-    if (error?.name === "NotAllowedError") {
-      message = "Akses kamera ditolak. Izinkan kamera untuk situs GitHub Pages ini.";
-    } else if (error?.name === "NotFoundError") {
-      message = "Kamera tidak ditemukan. Periksa kamera/USB camera pada IFP.";
-    } else if (error?.name === "NotReadableError") {
-      message = "Kamera sedang digunakan aplikasi lain. Tutup aplikasi kamera/video lain lalu coba lagi.";
-    } else if (error?.name === "SecurityError") {
-      message = "Browser memblokir akses kamera. Pastikan alamat game menggunakan HTTPS.";
-    }
-
-    errorBox.textContent = "Gagal memulai game: " + message;
+    errorBox.textContent =
+      "❌ " + (error?.name || "Error") + ": " + (error?.message || "Game tidak dapat dimulai.");
 
 
     startButton.disabled =
