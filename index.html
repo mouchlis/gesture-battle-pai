@@ -20,7 +20,6 @@
       rel="stylesheet">
 
 <!-- MediaPipe -->
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm/vision_wasm_internal.js"></script>
 
 <style>
 
@@ -953,11 +952,8 @@ button:active {
    MEDIA PIPE
 ===================================================== */
 
-import {
-  FilesetResolver,
-  HandLandmarker
-}
-from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/vision_bundle.mjs";
+let FilesetResolver = null;
+let HandLandmarker = null;
 
 
 /* =====================================================
@@ -1628,6 +1624,17 @@ async function startCamera() {
 ===================================================== */
 
 async function initializeMediaPipe() {
+
+  if (!FilesetResolver || !HandLandmarker) {
+    let mod;
+    try {
+      mod = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/vision_bundle.mjs");
+    } catch (e1) {
+      mod = await import("https://unpkg.com/@mediapipe/tasks-vision@0.10.22/vision_bundle.mjs");
+    }
+    FilesetResolver = mod.FilesetResolver;
+    HandLandmarker = mod.HandLandmarker;
+  }
 
   const vision =
     await FilesetResolver
@@ -2722,9 +2729,10 @@ async function startGame(){
       true;
 
 
+    // Kamera diminta TERLEBIH DAHULU agar dialog izin kamera muncul.
     await startCamera();
 
-
+    // Setelah kamera aktif, baru memuat MediaPipe.
     await initializeMediaPipe();
 
 
@@ -2776,9 +2784,8 @@ async function startGame(){
 
 
     errorBox.textContent =
-      "Kamera tidak dapat digunakan. " +
-      "Pastikan Anda memberikan izin kamera " +
-      "dan membuka Web App melalui URL HTTPS.";
+      "Gagal memulai game: " + (error?.message || error) +
+      " Pastikan kamera diizinkan pada browser.";
 
 
     startButton.disabled =
