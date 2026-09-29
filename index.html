@@ -780,6 +780,16 @@ button:active {
 
   </button>
 
+  <button id="cameraTestButton" type="button"
+    style="margin-left:10px;background:#2563eb;">
+    📷 TES KAMERA
+  </button>
+
+  <div id="cameraStatus"
+    style="margin:16px auto 0;max-width:750px;font-weight:900;color:#475569;">
+    Klik "TES KAMERA" untuk meminta izin kamera.
+  </div>
+
   <div
     id="error"
     class="error"
@@ -997,6 +1007,12 @@ document.getElementById("resultScreen");
 
 const startButton =
 document.getElementById("startButton");
+
+const cameraTestButton =
+document.getElementById("cameraTestButton");
+
+const cameraStatus =
+document.getElementById("cameraStatus");
 
 const restartButton =
 document.getElementById("restartButton");
@@ -1589,39 +1605,43 @@ function loadQuestion() {
    CAMERA
 ===================================================== */
 
-async function startCamera() {
+async function startCamera(){
 
-  const stream =
-    await navigator
-      .mediaDevices
-      .getUserMedia({
+  if(!window.isSecureContext){
+    throw new Error("Kamera membutuhkan HTTPS.");
+  }
 
-        video:{
-          width:{
-            ideal:1280
-          },
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    throw new Error("Browser ini tidak menyediakan akses kamera.");
+  }
 
-          height:{
-            ideal:720
-          },
+  if(camera.srcObject){
+    camera.srcObject.getTracks().forEach(track=>track.stop());
+    camera.srcObject=null;
+  }
 
-          facingMode:
-            "user"
-        },
+  cameraStatus.textContent="📷 Meminta izin kamera...";
 
-        audio:false
+  const stream=await navigator.mediaDevices.getUserMedia({
+    video:{
+      width:{ideal:1280},
+      height:{ideal:720},
+      facingMode:{ideal:"user"}
+    },
+    audio:false
+  });
 
-      });
+  camera.srcObject=stream;
 
-
-  camera.srcObject =
-    stream;
-
+  await new Promise(resolve=>{
+    if(camera.readyState>=1) resolve();
+    else camera.onloadedmetadata=()=>resolve();
+  });
 
   await camera.play();
 
+  cameraStatus.textContent="✅ Kamera aktif.";
 }
-
 
 /* =====================================================
    MEDIAPIPE
@@ -2410,81 +2430,57 @@ function startCountdown(){
 async function startGame(){
 
   try{
+    errorBox.style.display="none";
+    startButton.disabled=true;
+    cameraTestButton.disabled=true;
 
-    errorBox.style.display =
-      "none";
-
-
-    startButton.disabled =
-      true;
-
-
+    // Kamera harus berhasil terlebih dahulu.
     await startCamera();
 
+    cameraStatus.textContent="✅ Kamera aktif. Memuat deteksi tangan...";
 
     await initializeMediaPipe();
 
+    startScreen.style.display="none";
+    gameScreen.style.display="block";
 
-    startScreen.style.display =
-      "none";
-
-
-    gameScreen.style.display =
-      "block";
-
-
-    currentQuestion =
-      0;
-
-
-    scoreP1 =
-      0;
-
-
-    scoreP2 =
-      0;
-
-
+    currentQuestion=0;
+    scoreP1=0;
+    scoreP2=0;
     updateScores();
-
-
     loadQuestion();
-
 
     await startCountdown();
 
+    canvas.width=camera.videoWidth || 1280;
+    canvas.height=camera.videoHeight || 720;
 
-    gameRunning =
-      true;
-
-
-    gameLoop();
-
+    gameRunning=true;
+    requestAnimationFrame(()=>gameLoop());
 
   }catch(error){
 
-    console.error(
-      error
-    );
+    console.error("START GAME ERROR:",error);
 
+    startButton.disabled=false;
+    cameraTestButton.disabled=false;
+    errorBox.style.display="block";
 
-    errorBox.style.display =
-      "block";
+    if(error.name==="NotAllowedError"){
+      errorBox.textContent="❌ Izin kamera ditolak/diblokir. Klik ikon 🔒 di kiri alamat website → Camera → Allow, lalu refresh.";
+    }else if(error.name==="NotFoundError"){
+      errorBox.textContent="❌ Kamera tidak ditemukan.";
+    }else if(error.name==="NotReadableError"){
+      errorBox.textContent="❌ Kamera sedang dipakai aplikasi lain. Tutup aplikasi tersebut.";
+    }else if(error.name==="SecurityError"){
+      errorBox.textContent="❌ Browser memblokir kamera karena keamanan. Pastikan HTTPS.";
+    }else{
+      errorBox.textContent="❌ "+(error.message || "Kamera belum bisa digunakan.");
+    }
 
-
-    errorBox.textContent =
-      "Kamera tidak dapat digunakan. " +
-      "Pastikan Anda memberikan izin kamera " +
-      "dan membuka Web App melalui URL HTTPS.";
-
-
-    startButton.disabled =
-      false;
-
+    cameraStatus.textContent="⚠️ Kamera belum aktif.";
   }
-
 }
-
 
 /* =====================================================
    NEXT QUESTION
@@ -2648,8 +2644,51 @@ restartButton
 
 
 /* =====================================================
+   CAMERA TEST
+===================================================== */
+
+cameraTestButton.addEventListener("click",async()=>{
+
+  try{
+    cameraTestButton.disabled=true;
+    errorBox.style.display="none";
+
+    await startCamera();
+
+    // Hanya untuk memastikan izin dan stream kamera berhasil.
+    startScreen.style.display="none";
+    gameScreen.style.display="block";
+
+    canvas.width=camera.videoWidth || 1280;
+    canvas.height=camera.videoHeight || 720;
+
+    cameraStatus.textContent="✅ Kamera berhasil aktif.";
+  }catch(error){
+
+    console.error("CAMERA TEST ERROR:",error);
+
+    errorBox.style.display="block";
+
+    if(error.name==="NotAllowedError"){
+      errorBox.textContent="❌ Izin kamera ditolak/diblokir. Klik 🔒 di kiri alamat website → Camera → Allow, lalu refresh.";
+    }else if(error.name==="NotFoundError"){
+      errorBox.textContent="❌ Kamera tidak ditemukan.";
+    }else if(error.name==="NotReadableError"){
+      errorBox.textContent="❌ Kamera sedang digunakan aplikasi lain.";
+    }else{
+      errorBox.textContent="❌ "+(error.message || "Kamera belum bisa digunakan.");
+    }
+
+    cameraStatus.textContent="⚠️ Kamera belum aktif.";
+  }finally{
+    cameraTestButton.disabled=false;
+  }
+});
+
+/* =====================================================
    START BUTTON
 ===================================================== */
+
 
 startButton
   .addEventListener(
