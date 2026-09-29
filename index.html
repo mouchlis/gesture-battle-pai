@@ -1511,12 +1511,12 @@ function createBubbles(player) {
           Math.random()*0.34,
 
         y:
-          -0.10 -
-          Math.random()*0.65,
+          -0.08 -
+          Math.random()*0.22,
 
         speed:
-          0.00025 +
-          Math.random()*0.00014,
+          0.00055 +
+          Math.random()*0.00018,
 
         radius:
           0.060,
@@ -1659,6 +1659,229 @@ async function handDetectionLoop(){
 }
 
 /* =====================================================
+   COLLISION & ANSWER
+===================================================== */
+
+function collision(hand, bubble){
+
+  if(!hand || !bubble || !hand.open || bubble.hit){
+    return false;
+  }
+
+  const dx = hand.x - bubble.x;
+  const dy = hand.y - bubble.y;
+  const distance = Math.sqrt(dx*dx + dy*dy);
+
+  return distance < (0.075 + bubble.radius);
+}
+
+function catchAnswer(player, bubble){
+
+  if(players[player].locked) return;
+
+  bubble.hit = true;
+  players[player].locked = true;
+
+  const q = QUESTIONS[currentQuestion];
+  const correct = bubble.text === q.correct;
+
+  if(correct){
+    if(player === 1) scoreP1 += 10;
+    else scoreP2 += 10;
+  }
+
+  updateScores();
+
+  const feedback = player === 1 ? feedback1 : feedback2;
+
+  if(correct){
+    feedback.textContent = "⭐ BENAR! +10";
+    feedback.className = "feedback correct";
+  }else{
+    feedback.textContent = "💡 " + q.explanation;
+    feedback.className = "feedback wrong";
+  }
+
+  if(players[1].locked && players[2].locked){
+    setTimeout(nextQuestion, 1200);
+  }
+}
+
+
+/* =====================================================
+   DRAW GAME
+===================================================== */
+
+function drawGame(result){
+
+  const width = canvas.width;
+  const height = canvas.height;
+
+  ctx.clearRect(0, 0, width, height);
+
+  // Garis tengah arena.
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,.55)";
+  ctx.lineWidth = 4;
+  ctx.setLineDash([14,14]);
+  ctx.beginPath();
+  ctx.moveTo(width/2, 0);
+  ctx.lineTo(width/2, height);
+  ctx.stroke();
+  ctx.restore();
+
+  // MediaPipe Hands menggunakan multiHandLandmarks.
+  const hands = result?.multiHandLandmarks || [];
+
+  hands.forEach((landmarks)=>{
+
+    const palm = getPalm(landmarks);
+    const open = detectFiveFinger(landmarks);
+
+    // Canvas ditampilkan mirror, jadi koordinat X dibalik.
+    const displayX = 1 - palm.x;
+
+    const player = displayX < 0.5 ? 1 : 2;
+
+    players[player].hand = {
+      x: displayX,
+      y: palm.y,
+      open: open
+    };
+
+    players[player].open = open;
+
+    const hx = displayX * width;
+    const hy = palm.y * height;
+
+    ctx.beginPath();
+    ctx.arc(
+      hx,
+      hy,
+      open ? 58 : 40,
+      0,
+      Math.PI*2
+    );
+
+    ctx.fillStyle =
+      open
+      ? (player === 1
+          ? "rgba(34,197,94,.28)"
+          : "rgba(168,85,247,.28)")
+      : "rgba(245,158,11,.25)";
+
+    ctx.fill();
+
+    ctx.strokeStyle =
+      open
+      ? (player === 1 ? "#22c55e" : "#a855f7")
+      : "#f59e0b";
+
+    ctx.lineWidth = 5;
+    ctx.stroke();
+
+    ctx.font = "38px Arial";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("🖐️", hx, hy + 13);
+  });
+
+  // Jawaban jatuh.
+  [1,2].forEach((player)=>{
+
+    players[player].bubbles.forEach((bubble)=>{
+
+      if(bubble.hit) return;
+
+      // Gerakkan bubble setiap frame.
+      bubble.y += bubble.speed * 16;
+
+      // Jika melewati bawah, muncul lagi dari atas.
+      if(bubble.y > 1.12){
+        bubble.y = -0.12 - Math.random()*0.18;
+        bubble.x =
+          player === 1
+          ? 0.08 + Math.random()*0.40
+          : 0.58 + Math.random()*0.34;
+      }
+
+      if(collision(players[player].hand, bubble)){
+        catchAnswer(player, bubble);
+        return;
+      }
+
+      const x = bubble.x * width;
+      const y = bubble.y * height;
+      const radius =
+        bubble.radius * Math.min(width,height);
+
+      const gradient =
+        ctx.createRadialGradient(
+          x-radius*.35,
+          y-radius*.35,
+          radius*.08,
+          x,
+          y,
+          radius
+        );
+
+      if(player === 1){
+        gradient.addColorStop(0, "#bbf7d0");
+        gradient.addColorStop(1, "#16a34a");
+      }else{
+        gradient.addColorStop(0, "#e9d5ff");
+        gradient.addColorStop(1, "#7e22ce");
+      }
+
+      ctx.beginPath();
+      ctx.arc(x,y,radius,0,Math.PI*2);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      // Teks jawaban.
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "900 15px Nunito";
+      ctx.textAlign = "center";
+
+      const words = bubble.text.split(" ");
+      const lines = [];
+      let line = "";
+
+      words.forEach((word)=>{
+        const test = line ? line + " " + word : word;
+
+        if(
+          ctx.measureText(test).width > radius*1.55 &&
+          line
+        ){
+          lines.push(line);
+          line = word;
+        }else{
+          line = test;
+        }
+      });
+
+      if(line) lines.push(line);
+
+      lines.slice(0,3).forEach((text,index)=>{
+        ctx.fillText(
+          text,
+          x,
+          y + (
+            index -
+            (Math.min(lines.length,3)-1)/2
+          ) * 18
+        );
+      });
+    });
+  });
+}
+
+/* =====================================================
    DETECTION LOOP
 ===================================================== */
 
@@ -1720,8 +1943,6 @@ async function gameLoop(){
 
   }
 
-
-  handDetectionLoop();
 
   animationFrame =
     requestAnimationFrame(
