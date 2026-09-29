@@ -405,8 +405,7 @@ button:active {
 
   height:100%;
 
-  /* Jangan mirror canvas.
-     Koordinat tangan sudah dibalik di JavaScript. */
+  /* Canvas normal; koordinat tangan sudah dibalik satu kali di JavaScript. */
   transform:none;
 
   pointer-events:none;
@@ -1439,76 +1438,52 @@ const players = {
 
 
 /* =====================================================
-   CREATE BUBBLES
+   CREATE ANSWER CARDS
 ===================================================== */
 
 function createBubbles(player) {
 
-  const question =
-    QUESTIONS[currentQuestion];
+  const question = QUESTIONS[currentQuestion];
 
-  /*
-    Acak jawaban
-  */
+  const answers = [...question.answers].sort(() => Math.random() - .5);
 
-  const answers =
-    [...question.answers]
-      .sort(
-        () =>
-          Math.random() -
-          .5
-      );
+  const minX = player === 1 ? 0.055 : 0.555;
+  const maxX = player === 1 ? 0.445 : 0.945;
+  const cardW = 0.245;
+  const cardH = 0.105;
 
-  /*
-    Buat lingkaran
-  */
+  players[player].bubbles = answers.map((answer,index) => {
 
-  players[player].bubbles =
-    answers.map(
-      (answer,index)=>({
+    let x, y, tries = 0;
 
-        id:
-          player +
-          "_" +
-          currentQuestion +
-          "_" +
-          index +
-          "_" +
-          Date.now(),
-
-        text:answer,
-
-        x:
-          player === 1
-
-          ?
-
-          0.08 +
-          Math.random()*0.40
-
-          :
-
-          0.58 +
-          Math.random()*0.34,
-
-        y:
-          -0.02 -
-          Math.random()*0.35,
-
-        speed:
-          0.000055 +
-          Math.random()*0.000025,
-
-        radius:
-          0.060,
-
-        hit:false
-
-      })
+    // Sebar kartu di berbagai tempat, tetapi tetap di wilayah pemain.
+    do {
+      x = minX + Math.random() * (maxX - minX - cardW);
+      y = 0.08 + Math.random() * 0.76;
+      tries++;
+    } while (
+      tries < 30 &&
+      players[player].bubbles.some(b =>
+        Math.abs((b.x + b.w/2) - (x + cardW/2)) < cardW * 0.82 &&
+        Math.abs((b.y + b.h/2) - (y + cardH/2)) < cardH * 1.25
+      )
     );
 
-}
+    return {
+      id: player + '_' + currentQuestion + '_' + index + '_' + Date.now(),
+      text: answer,
+      x, y,
+      w: cardW,
+      h: cardH,
+      vx: (Math.random() - 0.5) * 0.00011,
+      vy: (Math.random() - 0.5) * 0.00008,
+      phase: Math.random() * Math.PI * 2,
+      drift: 0.000035 + Math.random() * 0.000025,
+      hit: false
+    };
+  });
 
+}
 
 /* =====================================================
    LOAD QUESTION
@@ -1788,58 +1763,24 @@ function getPalm(lm) {
 
 
 /* =====================================================
-   COLLISION
+   COLLISION — TELAPAK DENGAN KARTU
 ===================================================== */
 
-function collision(
-  hand,
-  bubble
-){
+function collision(hand, bubble) {
 
-  if(
-    !hand ||
-    !bubble ||
-    !hand.open ||
-    bubble.hit
-  ){
+  if (!hand || !bubble || !hand.open || bubble.hit) return false;
 
-    return false;
-
-  }
-
-
-  const dx =
-    hand.x -
-    bubble.x;
-
-
-  const dy =
-    hand.y -
-    bubble.y;
-
-
-  const distance =
-    Math.sqrt(
-      dx*dx +
-      dy*dy
-    );
-
-
-  /*
-    Radius tangan
-    + radius lingkaran
-  */
+  // Area tangkap diperlebar sedikit agar anak mudah mengenai kartu.
+  const padX = 0.055;
+  const padY = 0.075;
 
   return (
-    distance <
-    (
-      0.12 +
-      bubble.radius
-    )
+    hand.x >= bubble.x - padX &&
+    hand.x <= bubble.x + bubble.w + padX &&
+    hand.y >= bubble.y - padY &&
+    hand.y <= bubble.y + bubble.h + padY
   );
-
 }
-
 
 /* =====================================================
    ANSWER
@@ -2283,278 +2224,129 @@ function drawGame(
 
 
   /*
-    Update & draw
-    lingkaran jawaban
+    KARTU JAWABAN GLASSMORPHISM
+    Bergerak lembut/mengambang di berbagai tempat.
   */
 
-  [1,2].forEach(
-    player=>{
-
-      players[player]
-        .bubbles
-        .forEach(
-          bubble=>{
-
-            if(
-              bubble.hit
-            ){
-
-              return;
-
-            }
-
-
-            /*
-              Gerakkan turun
-            */
-
-            bubble.y += bubble.speed * dt * 60;
-
-
-            /*
-              Jika lewat bawah
-            */
-
-            if(
-              bubble.y >
-              1.15
-            ){
-
-              bubble.y =
-                -0.15 -
-                Math.random()*.4;
-
-              bubble.x =
-                player === 1
-                ?
-                .08 +
-                Math.random()*.40
-                :
-                .58 +
-                Math.random()*.34;
-
-            }
-
-
-            /*
-              Collision
-            */
-
-            if(
-              collision(
-                players[player].hand,
-                bubble
-              )
-            ){
-
-              catchAnswer(
-                player,
-                bubble
-              );
-
-            }
-
-
-            /*
-              Draw circle
-            */
-
-            const x =
-              bubble.x *
-              width;
-
-
-            const y =
-              bubble.y *
-              height;
-
-
-            const radius =
-              bubble.radius *
-              Math.min(
-                width,
-                height
-              );
-
-
-            /*
-              Gradient
-            */
-
-            const gradient =
-              ctx.createRadialGradient(
-                x-radius*.35,
-                y-radius*.35,
-                radius*.1,
-                x,
-                y,
-                radius
-              );
-
-
-            if(player === 1){
-
-              gradient.addColorStop(
-                0,
-                "#bbf7d0"
-              );
-
-              gradient.addColorStop(
-                1,
-                "#16a34a"
-              );
-
-            }else{
-
-              gradient.addColorStop(
-                0,
-                "#e9d5ff"
-              );
-
-              gradient.addColorStop(
-                1,
-                "#7e22ce"
-              );
-
-            }
-
-
-            ctx.beginPath();
-
-            ctx.arc(
-              x,
-              y,
-              radius,
-              0,
-              Math.PI*2
-            );
-
-
-            ctx.fillStyle =
-              gradient;
-
-
-            ctx.fill();
-
-
-            ctx.strokeStyle =
-              "#ffffff";
-
-
-            ctx.lineWidth =
-              4;
-
-
-            ctx.stroke();
-
-
-            /*
-              Teks jawaban
-            */
-
-            ctx.fillStyle =
-              "#ffffff";
-
-
-            ctx.font =
-              "900 16px Nunito";
-
-
-            ctx.textAlign =
-              "center";
-
-
-            /*
-              Wrap text
-            */
-
-            const words =
-              bubble.text
-                .split(" ");
-
-
-            const lines =
-              [];
-
-
-            let line =
-              "";
-
-
-            words.forEach(
-              word=>{
-
-                const test =
-                  line
-                  ? line +
-                    " " +
-                    word
-                  : word;
-
-
-                if(
-                  ctx.measureText(
-                    test
-                  ).width >
-                  radius*1.55 &&
-                  line
-                ){
-
-                  lines.push(
-                    line
-                  );
-
-                  line =
-                    word;
-
-                }else{
-
-                  line =
-                    test;
-
-                }
-
-              }
-            );
-
-
-            if(line){
-
-              lines.push(
-                line
-              );
-
-            }
-
-
-            lines
-              .slice(0,3)
-              .forEach(
-                (text,index)=>{
-
-                  ctx.fillText(
-                    text,
-                    x,
-                    y +
-                    (
-                      index -
-                      (
-                        Math.min(
-                          lines.length,
-                          3
-                        )-1
-                      )/2
-                    )*20
-                  );
-
-                }
-              );
-
-          }
-        );
-
-    }
-  );
+  [1,2].forEach(player => {
+
+    players[player].bubbles.forEach(bubble => {
+
+      if (bubble.hit) return;
+
+      // Gerakan drift + sedikit gelombang supaya terasa hidup,
+      // tetapi tidak terlalu cepat untuk anak kelas 2.
+      bubble.phase += dt * 0.9;
+      bubble.x += bubble.vx * dt * 60;
+      bubble.y += bubble.vy * dt * 60;
+      bubble.x += Math.cos(bubble.phase) * bubble.drift * dt * 60;
+      bubble.y += Math.sin(bubble.phase * 0.83) * bubble.drift * 0.55 * dt * 60;
+
+      const minX = player === 1 ? 0.025 : 0.525;
+      const maxX = player === 1 ? 0.475 : 0.975;
+      const minY = 0.035;
+      const maxY = 0.91;
+
+      if (bubble.x < minX) {
+        bubble.x = minX;
+        bubble.vx = Math.abs(bubble.vx);
+      }
+      if (bubble.x + bubble.w > maxX) {
+        bubble.x = maxX - bubble.w;
+        bubble.vx = -Math.abs(bubble.vx);
+      }
+      if (bubble.y < minY) {
+        bubble.y = minY;
+        bubble.vy = Math.abs(bubble.vy);
+      }
+      if (bubble.y + bubble.h > maxY) {
+        bubble.y = maxY - bubble.h;
+        bubble.vy = -Math.abs(bubble.vy);
+      }
+
+      if (collision(players[player].hand, bubble)) {
+        catchAnswer(player, bubble);
+        return;
+      }
+
+      const x = bubble.x * width;
+      const y = bubble.y * height;
+      const w = bubble.w * width;
+      const h = bubble.h * height;
+      const r = Math.min(22, h * 0.28);
+
+      // Shadow
+      ctx.save();
+      ctx.shadowColor = player === 1
+        ? 'rgba(16,185,129,.25)'
+        : 'rgba(139,92,246,.28)';
+      ctx.shadowBlur = 18;
+      ctx.shadowOffsetY = 6;
+
+      // Glass body
+      const glass = ctx.createLinearGradient(x, y, x, y + h);
+      if (player === 1) {
+        glass.addColorStop(0, 'rgba(255,255,255,.38)');
+        glass.addColorStop(0.5, 'rgba(16,185,129,.20)');
+        glass.addColorStop(1, 'rgba(15,118,110,.32)');
+      } else {
+        glass.addColorStop(0, 'rgba(255,255,255,.40)');
+        glass.addColorStop(0.5, 'rgba(168,85,247,.20)');
+        glass.addColorStop(1, 'rgba(91,33,182,.32)');
+      }
+
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, r);
+      ctx.fillStyle = glass;
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+
+      // Border glass
+      ctx.strokeStyle = 'rgba(255,255,255,.72)';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Highlight strip
+      ctx.beginPath();
+      ctx.roundRect(x + 7, y + 6, w - 14, Math.max(7, h * 0.16), r * 0.55);
+      ctx.fillStyle = 'rgba(255,255,255,.18)';
+      ctx.fill();
+
+      // Text
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 18px Nunito';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0,0,0,.28)';
+      ctx.shadowBlur = 5;
+
+      const words = bubble.text.split(' ');
+      const lines = [];
+      let line = '';
+      const maxTextWidth = w * 0.84;
+
+      words.forEach(word => {
+        const test = line ? line + ' ' + word : word;
+        if (ctx.measureText(test).width > maxTextWidth && line) {
+          lines.push(line);
+          line = word;
+        } else {
+          line = test;
+        }
+      });
+      if (line) lines.push(line);
+
+      const shown = lines.slice(0, 2);
+      const lineH = 22;
+      const startY = y + h/2 - ((shown.length - 1) * lineH)/2;
+      shown.forEach((text, i) => {
+        ctx.fillText(text, x + w/2, startY + i * lineH);
+      });
+
+      ctx.restore();
+
+    });
+  });
 
 }
 
