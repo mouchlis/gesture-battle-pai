@@ -1587,23 +1587,16 @@ function loadQuestion() {
 
 async function startCamera() {
 
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    throw new Error("Browser tidak mendukung kamera. Gunakan Chrome/Edge terbaru melalui HTTPS.");
+  }
+
   const stream =
     await navigator
       .mediaDevices
       .getUserMedia({
 
-        video:{
-          width:{
-            ideal:1280
-          },
-
-          height:{
-            ideal:720
-          },
-
-          facingMode:
-            "user"
-        },
+        video:true,
 
         audio:false
 
@@ -1626,12 +1619,31 @@ async function startCamera() {
 async function initializeMediaPipe() {
 
   if (!FilesetResolver || !HandLandmarker) {
-    let mod;
-    try {
-      mod = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/vision_bundle.mjs");
-    } catch (e1) {
-      mod = await import("https://unpkg.com/@mediapipe/tasks-vision@0.10.22/vision_bundle.mjs");
+    let mod = null;
+    const sources = [
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22",
+      "https://unpkg.com/@mediapipe/tasks-vision@0.10.22",
+      "https://esm.sh/@mediapipe/tasks-vision@0.10.22"
+    ];
+
+    let lastError = null;
+    for (const url of sources) {
+      try {
+        mod = await import(url);
+        if (mod && mod.FilesetResolver && mod.HandLandmarker) break;
+      } catch (e) {
+        lastError = e;
+        console.warn("MediaPipe CDN gagal:", url, e);
+      }
     }
+
+    if (!mod || !mod.FilesetResolver || !mod.HandLandmarker) {
+      throw new Error(
+        "MediaPipe tidak dapat dimuat. Pastikan internet aktif dan jaringan sekolah tidak memblokir CDN. " +
+        (lastError?.message || "")
+      );
+    }
+
     FilesetResolver = mod.FilesetResolver;
     HandLandmarker = mod.HandLandmarker;
   }
@@ -2783,9 +2795,19 @@ async function startGame(){
       "block";
 
 
-    errorBox.textContent =
-      "Gagal memulai game: " + (error?.message || error) +
-      " Pastikan kamera diizinkan pada browser.";
+    let message = error?.message || String(error);
+
+    if (error?.name === "NotAllowedError") {
+      message = "Akses kamera ditolak. Izinkan kamera untuk situs GitHub Pages ini.";
+    } else if (error?.name === "NotFoundError") {
+      message = "Kamera tidak ditemukan. Periksa kamera/USB camera pada IFP.";
+    } else if (error?.name === "NotReadableError") {
+      message = "Kamera sedang digunakan aplikasi lain. Tutup aplikasi kamera/video lain lalu coba lagi.";
+    } else if (error?.name === "SecurityError") {
+      message = "Browser memblokir akses kamera. Pastikan alamat game menggunakan HTTPS.";
+    }
+
+    errorBox.textContent = "Gagal memulai game: " + message;
 
 
     startButton.disabled =
