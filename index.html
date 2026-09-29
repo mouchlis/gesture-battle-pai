@@ -962,6 +962,27 @@ document.getElementById("gameCanvas");
 const ctx =
 canvas.getContext("2d");
 
+
+/* Fallback untuk browser/IFP yang belum mendukung ctx.roundRect() */
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    r = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
+    this.beginPath();
+    this.moveTo(x + r, y);
+    this.lineTo(x + w - r, y);
+    this.quadraticCurveTo(x + w, y, x + w, y + r);
+    this.lineTo(x + w, y + h - r);
+    this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    this.lineTo(x + r, y + h);
+    this.quadraticCurveTo(x, y + h, x, y + h - r);
+    this.lineTo(x, y + r);
+    this.quadraticCurveTo(x, y, x + r, y);
+    this.closePath();
+  };
+}
+
+
+
 const startScreen =
 document.getElementById("startScreen");
 
@@ -2016,7 +2037,8 @@ function playSound(
 ===================================================== */
 
 function drawGame(
-  result
+  result,
+  dt = 0.016
 ){
 
   const width =
@@ -2407,7 +2429,8 @@ async function gameLoop(){
     */
 
     drawGame(
-      result
+      result,
+      dt
     );
 
 
