@@ -1,527 +1,2967 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Gesture Battle — Asmaul Husna</title>
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width,
+               initial-scale=1.0,
+               maximum-scale=1.0,
+               user-scalable=no">
+
+<title>Gesture Battle</title>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin>
+
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@700;800;900&display=swap"
+      rel="stylesheet">
+
+<!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm/vision_wasm_internal.js"></script>
+
 <style>
-*{box-sizing:border-box}html,body{margin:0;width:100%;min-height:100%;font-family:Nunito,Arial,sans-serif;background:linear-gradient(135deg,#e9f8f3,#fff7df);color:#17343a}
-body{overflow-x:hidden}button{font:inherit;border:0;cursor:pointer}.app{width:100%;max-width:1800px;margin:auto;padding:12px}
-.header{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:12px 18px;background:#fff;border:2px solid #cfe8df;border-radius:22px}
-.logo{font-family:"Baloo 2";font-size:clamp(25px,3vw,42px);font-weight:800;color:#0f766e}.subtitle{color:#64748b;font-weight:800}
-.scores{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.score,.round{padding:9px 15px;border-radius:15px;background:#f8fafc;border:2px solid #dbe8e4;font-weight:900}.score b{font-size:27px}.p1{color:#15803d}.p2{color:#7e22ce}
-.start,.result{margin-top:15px;padding:clamp(30px,6vw,70px) 20px;background:#fff;border:2px solid #cfe8df;border-radius:28px;text-align:center}
-.start h1,.result h1,.result h2{font-family:"Baloo 2";color:#0f766e}.start h1{font-size:clamp(38px,6vw,70px);margin:10px 0}.start p{max-width:800px;margin:0 auto 25px;color:#64748b;font-size:19px;font-weight:800}
-.icon{font-size:clamp(55px,9vw,100px)}.instructions{display:flex;justify-content:center;flex-wrap:wrap;gap:12px;margin:25px 0}.instruction{padding:15px 20px;background:#f0fdfa;border:2px solid #99f6e4;border-radius:18px;font-weight:900}
-.primary{min-height:60px;padding:14px 28px;border-radius:17px;background:#0f766e;color:white;font-weight:900;font-size:20px}.primary:disabled{opacity:.6}
-.status{max-width:850px;margin:18px auto;padding:13px;border-radius:15px;font-weight:900}.status.info{background:#ecfeff;color:#155e75}.status.error{background:#fff1f2;color:#be123c}.status.ok{background:#dcfce7;color:#166534}
-.question{margin-top:13px;padding:13px 20px;background:#fff;border:2px solid #cfe8df;border-radius:22px;text-align:center}.qlabel{color:#0f766e;font-size:13px;font-weight:900;letter-spacing:.12em}.question h1{font-family:"Baloo 2";font-size:clamp(25px,3vw,43px);line-height:1.05;margin:4px 0}.question p{color:#64748b;font-weight:800;margin:5px 0}
-.arena{position:relative;margin-top:13px;width:100%;aspect-ratio:16/8;min-height:400px;overflow:hidden;border:4px solid #cfe8df;border-radius:25px;background:#09242c}
-#camera{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
-#gameCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-.label{position:absolute;top:12px;padding:8px 14px;border-radius:50px;background:rgba(255,255,255,.92);font-weight:900;z-index:10}.l1{left:12px;color:#15803d}.l2{right:12px;color:#7e22ce}
-.countdown{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:50;font-family:"Baloo 2";font-size:clamp(100px,20vw,220px);font-weight:900;color:#fff;text-shadow:0 8px 30px #000}
-.feedback-row{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:13px}.feedback{min-height:58px;display:flex;justify-content:center;align-items:center;text-align:center;padding:10px;border-radius:16px;background:#fff;border:2px solid #dbe8e4;font-weight:900;color:#64748b}.correct{background:#dcfce7!important;border-color:#86efac!important;color:#166534!important}.wrong{background:#fff7ed!important;border-color:#fdba74!important;color:#9a3412!important}
-.progress{height:13px;margin-top:13px;background:#d7ebe4;border-radius:50px;overflow:hidden}.progressbar{height:100%;background:#0f766e;border-radius:50px;transition:width .3s}.tip{text-align:center;margin-top:7px;color:#64748b;font-weight:800;font-size:14px}
-.result h1{font-size:55px}.trophy{font-size:90px}.result h2{font-size:40px;margin-bottom:20px}.leaderboard{max-width:650px;margin:20px auto;display:grid;gap:10px}.rank{display:flex;justify-content:space-between;padding:18px 20px;border-radius:18px;background:#f8fffd;border:2px solid #dbe8e4;font-size:23px;font-weight:900}
-@media(max-width:800px){.header{flex-direction:column;align-items:flex-start}.arena{aspect-ratio:4/3;min-height:330px}.feedback-row{grid-template-columns:1fr}}
+
+* {
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+html,
+body {
+  width:100%;
+  min-height:100%;
+  overflow-x:hidden;
+}
+
+body {
+
+  font-family:
+    "Nunito",
+    Arial,
+    sans-serif;
+
+  background:
+    linear-gradient(
+      135deg,
+      #e9f8f3,
+      #fff7df
+    );
+
+  color:#17343a;
+}
+
+/* =====================================================
+   MAIN
+===================================================== */
+
+#app {
+
+  width:100%;
+  max-width:1800px;
+
+  margin:auto;
+
+  padding:12px;
+}
+
+/* =====================================================
+   HEADER
+===================================================== */
+
+.header {
+
+  display:flex;
+
+  justify-content:space-between;
+
+  align-items:center;
+
+  gap:15px;
+
+  padding:12px 18px;
+
+  background:white;
+
+  border:2px solid #cfe8df;
+
+  border-radius:22px;
+}
+
+.logo {
+
+  font-family:
+    "Baloo 2",
+    sans-serif;
+
+  font-size:
+    clamp(25px,3vw,42px);
+
+  font-weight:800;
+
+  color:#0f766e;
+}
+
+.subtitle {
+
+  color:#64748b;
+
+  font-weight:800;
+}
+
+.scores {
+
+  display:flex;
+
+  gap:10px;
+
+  align-items:center;
+
+  flex-wrap:wrap;
+}
+
+.score {
+
+  padding:9px 15px;
+
+  border-radius:15px;
+
+  background:#f8fafc;
+
+  border:2px solid #dbe8e4;
+
+  font-weight:900;
+
+  font-size:17px;
+}
+
+.score b {
+
+  font-size:27px;
+}
+
+.p1 {
+
+  color:#15803d;
+}
+
+.p2 {
+
+  color:#7e22ce;
+}
+
+.round {
+
+  padding:10px 14px;
+
+  background:#f1f5f9;
+
+  border-radius:14px;
+
+  font-weight:900;
+}
+
+/* =====================================================
+   START SCREEN
+===================================================== */
+
+.start-screen {
+
+  margin-top:15px;
+
+  padding:
+    clamp(30px,6vw,70px)
+    20px;
+
+  background:white;
+
+  border:
+    2px solid #cfe8df;
+
+  border-radius:28px;
+
+  text-align:center;
+}
+
+.start-icon {
+
+  font-size:
+    clamp(55px,9vw,100px);
+}
+
+.start-screen h1 {
+
+  font-family:
+    "Baloo 2",
+    sans-serif;
+
+  font-size:
+    clamp(38px,6vw,70px);
+
+  color:#0f766e;
+
+  margin:10px 0;
+}
+
+.start-screen p {
+
+  max-width:800px;
+
+  margin:0 auto 25px;
+
+  color:#64748b;
+
+  font-size:19px;
+
+  font-weight:800;
+}
+
+.instructions {
+
+  display:flex;
+
+  justify-content:center;
+
+  flex-wrap:wrap;
+
+  gap:12px;
+
+  margin:25px 0;
+}
+
+.instruction {
+
+  padding:15px 20px;
+
+  background:#f0fdfa;
+
+  border:
+    2px solid #99f6e4;
+
+  border-radius:18px;
+
+  font-weight:900;
+}
+
+button {
+
+  min-height:55px;
+
+  padding:
+    13px 25px;
+
+  border:0;
+
+  border-radius:17px;
+
+  background:#0f766e;
+
+  color:white;
+
+  font-family:
+    "Nunito",
+    sans-serif;
+
+  font-weight:900;
+
+  font-size:18px;
+
+  cursor:pointer;
+}
+
+button:hover {
+
+  filter:brightness(1.08);
+}
+
+button:active {
+
+  transform:scale(.97);
+}
+
+.error {
+
+  max-width:750px;
+
+  margin:18px auto;
+
+  padding:13px;
+
+  border-radius:15px;
+
+  background:#fff1f2;
+
+  color:#be123c;
+
+  font-weight:900;
+}
+
+/* =====================================================
+   QUESTION
+===================================================== */
+
+.question {
+
+  margin-top:13px;
+
+  padding:
+    13px 20px;
+
+  background:white;
+
+  border:
+    2px solid #cfe8df;
+
+  border-radius:22px;
+
+  text-align:center;
+}
+
+.question-label {
+
+  color:#0f766e;
+
+  font-size:13px;
+
+  font-weight:900;
+
+  letter-spacing:.12em;
+}
+
+.question h1 {
+
+  font-family:
+    "Baloo 2",
+    sans-serif;
+
+  font-size:
+    clamp(25px,3vw,43px);
+
+  line-height:1.05;
+
+  margin-top:4px;
+}
+
+.question p {
+
+  color:#64748b;
+
+  font-weight:800;
+
+  margin-top:5px;
+}
+
+/* =====================================================
+   GAME ARENA
+===================================================== */
+
+.arena {
+
+  position:relative;
+
+  margin-top:13px;
+
+  width:100%;
+
+  aspect-ratio:16/8;
+
+  min-height:400px;
+
+  overflow:hidden;
+
+  border:
+    4px solid #cfe8df;
+
+  border-radius:25px;
+
+  background:#09242c;
+}
+
+#camera {
+
+  position:absolute;
+
+  inset:0;
+
+  width:100%;
+
+  height:100%;
+
+  object-fit:cover;
+
+  transform:scaleX(-1);
+}
+
+#gameCanvas {
+
+  position:absolute;
+
+  inset:0;
+
+  width:100%;
+
+  height:100%;
+
+  transform:scaleX(-1);
+
+  pointer-events:none;
+}
+
+/* =====================================================
+   PLAYER LABEL
+===================================================== */
+
+.player-label {
+
+  position:absolute;
+
+  top:12px;
+
+  padding:
+    8px 14px;
+
+  border-radius:50px;
+
+  background:
+    rgba(255,255,255,.92);
+
+  font-weight:900;
+
+  z-index:10;
+}
+
+.player1-label {
+
+  left:12px;
+
+  color:#15803d;
+}
+
+.player2-label {
+
+  right:12px;
+
+  color:#7e22ce;
+}
+
+/* =====================================================
+   COUNTDOWN
+===================================================== */
+
+#countdown {
+
+  position:absolute;
+
+  inset:0;
+
+  display:none;
+
+  align-items:center;
+
+  justify-content:center;
+
+  z-index:50;
+
+  font-family:
+    "Baloo 2",
+    sans-serif;
+
+  font-size:
+    clamp(100px,20vw,220px);
+
+  font-weight:900;
+
+  color:white;
+
+  text-shadow:
+    0 8px 30px #000;
+}
+
+/* =====================================================
+   FEEDBACK
+===================================================== */
+
+.feedback-row {
+
+  display:grid;
+
+  grid-template-columns:
+    1fr 1fr;
+
+  gap:13px;
+
+  margin-top:13px;
+}
+
+.feedback {
+
+  min-height:58px;
+
+  display:flex;
+
+  justify-content:center;
+
+  align-items:center;
+
+  text-align:center;
+
+  padding:10px;
+
+  border-radius:16px;
+
+  background:white;
+
+  border:
+    2px solid #dbe8e4;
+
+  font-weight:900;
+
+  color:#64748b;
+}
+
+.feedback.correct {
+
+  background:#dcfce7;
+
+  border-color:#86efac;
+
+  color:#166534;
+}
+
+.feedback.wrong {
+
+  background:#fff7ed;
+
+  border-color:#fdba74;
+
+  color:#9a3412;
+}
+
+/* =====================================================
+   PROGRESS
+===================================================== */
+
+.progress {
+
+  height:13px;
+
+  margin-top:13px;
+
+  background:#d7ebe4;
+
+  border-radius:50px;
+
+  overflow:hidden;
+}
+
+.progress-bar {
+
+  height:100%;
+
+  background:#0f766e;
+
+  border-radius:50px;
+
+  transition:
+    width .3s ease;
+}
+
+.tip {
+
+  text-align:center;
+
+  margin-top:7px;
+
+  color:#64748b;
+
+  font-weight:800;
+
+  font-size:14px;
+}
+
+/* =====================================================
+   RESULT
+===================================================== */
+
+.result {
+
+  margin-top:15px;
+
+  padding:50px 20px;
+
+  background:white;
+
+  border:
+    2px solid #cfe8df;
+
+  border-radius:28px;
+
+  text-align:center;
+}
+
+.trophy {
+
+  font-size:90px;
+}
+
+.result h1 {
+
+  font-family:
+    "Baloo 2",
+    sans-serif;
+
+  color:#0f766e;
+
+  font-size:55px;
+}
+
+.leaderboard {
+
+  max-width:650px;
+
+  margin:
+    20px auto;
+
+  display:grid;
+
+  gap:10px;
+}
+
+.rank {
+
+  display:flex;
+
+  justify-content:space-between;
+
+  padding:18px 20px;
+
+  border-radius:18px;
+
+  background:#f8fffd;
+
+  border:
+    2px solid #dbe8e4;
+
+  font-size:23px;
+
+  font-weight:900;
+}
+
+.result h2 {
+
+  font-family:
+    "Baloo 2",
+    sans-serif;
+
+  color:#0f766e;
+
+  font-size:40px;
+
+  margin-bottom:20px;
+}
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media(max-width:800px) {
+
+  .header {
+
+    flex-direction:column;
+
+    align-items:flex-start;
+  }
+
+  .arena {
+
+    aspect-ratio:4/3;
+
+    min-height:330px;
+  }
+
+  .feedback-row {
+
+    grid-template-columns:1fr;
+  }
+
+}
+
 </style>
 </head>
+
 <body>
-<div class="app">
+
+<div id="app">
+
+<!-- ==================================================
+     HEADER
+=================================================== -->
+
 <header class="header">
-  <div><div class="logo">🌙 GESTURE BATTLE</div><div class="subtitle">PAI Kelas 2 • Asmaul Husna</div></div>
-  <div class="scores">
-    <div class="score p1">🟢 P1 <b id="score1">0</b></div>
-    <div class="round" id="round">SOAL 1 / 20</div>
-    <div class="round" id="timer">⏱️ 15</div>
-    <div class="score p2">🟣 P2 <b id="score2">0</b></div>
+
+  <div>
+
+    <div class="logo">
+      🌙 GESTURE BATTLE
+    </div>
+
+    <div class="subtitle">
+      PAI Kelas 2 • Asmaul Husna
+    </div>
+
   </div>
+
+  <div class="scores">
+
+    <div class="score p1">
+      🟢 P1
+      <b id="score1">0</b>
+    </div>
+
+    <div class="round" id="round">
+      SOAL 1 / 20
+    </div>
+
+    <div class="score p2">
+      🟣 P2
+      <b id="score2">0</b>
+    </div>
+
+  </div>
+
 </header>
 
-<section id="startScreen" class="start">
-  <div class="icon">🖐️ 💫 🖐️</div>
-  <h1>TANGKAP JAWABAN!</h1>
-  <p>Gerakkan telapak tanganmu untuk menangkap lingkaran jawaban yang benar.</p>
+
+<!-- ==================================================
+     START
+=================================================== -->
+
+<section
+  id="startScreen"
+  class="start-screen">
+
+  <div class="start-icon">
+    🖐️ 💫 🖐️
+  </div>
+
+  <h1>
+    TANGKAP JAWABAN!
+  </h1>
+
+  <p>
+    Gerakkan telapak tanganmu untuk
+    menangkap lingkaran jawaban yang benar.
+  </p>
+
   <div class="instructions">
-    <div class="instruction">🖐️ 5 JARI = TANGAN AKTIF</div>
-    <div class="instruction">⭕ TANGKAP JAWABAN</div>
-    <div class="instruction">⭐ BENAR = +10</div>
+
+    <div class="instruction">
+      🖐️ 5 JARI = TANGAN AKTIF
+    </div>
+
+    <div class="instruction">
+      ⭕ TANGKAP JAWABAN
+    </div>
+
+    <div class="instruction">
+      ⭐ BENAR = +10
+    </div>
+
   </div>
-  <button id="startButton" class="primary">🎥 MULAI GAME</button>
-  <div id="status" class="status info" style="display:none"></div>
+
+  <button
+    id="startButton">
+
+    🎥 MULAI GAME
+
+  </button>
+
+  <div
+    id="error"
+    class="error"
+    style="display:none">
+  </div>
+
 </section>
 
-<section id="gameScreen" style="display:none">
+
+<!-- ==================================================
+     GAME
+=================================================== -->
+
+<section
+  id="gameScreen"
+  style="display:none">
+
   <div class="question">
-    <div class="qlabel">PERTANYAAN</div>
+
+    <div class="question-label">
+      PERTANYAAN
+    </div>
+
     <h1 id="questionText"></h1>
-    <p>🖐️ Buka telapak tangan dan tangkap lingkaran jawaban yang benar!</p>
+
+    <p>
+      🖐️ Buka telapak tangan dan tangkap
+      lingkaran jawaban yang benar!
+    </p>
+
   </div>
+
+
   <div class="arena">
-    <video id="camera" autoplay playsinline muted></video>
-    <canvas id="gameCanvas"></canvas>
-    <div class="label l1">🟢 PLAYER 1</div>
-    <div class="label l2">🟣 PLAYER 2</div>
-    <div id="countdown" class="countdown"></div>
+
+    <video
+      id="camera"
+      autoplay
+      playsinline
+      muted>
+    </video>
+
+    <canvas
+      id="gameCanvas">
+    </canvas>
+
+    <div
+      class="player-label player1-label">
+
+      🟢 PLAYER 1
+
+    </div>
+
+    <div
+      class="player-label player2-label">
+
+      🟣 PLAYER 2
+
+    </div>
+
+    <div id="countdown"></div>
+
   </div>
+
+
   <div class="feedback-row">
-    <div id="feedback1" class="feedback">🖐️ Tangkap jawaban!</div>
-    <div id="feedback2" class="feedback">🖐️ Tangkap jawaban!</div>
+
+    <div
+      id="feedback1"
+      class="feedback">
+
+      🖐️ Tangkap jawaban!
+
+    </div>
+
+    <div
+      id="feedback2"
+      class="feedback">
+
+      🖐️ Tangkap jawaban!
+
+    </div>
+
   </div>
-  <div class="progress"><div id="progressBar" class="progressbar" style="width:5%"></div></div>
-  <div class="tip">Player 1 di kiri • Player 2 di kanan • Telapak terbuka = aktif</div>
+
+
+  <div class="progress">
+
+    <div
+      id="progressBar"
+      class="progress-bar"
+      style="width:5%">
+    </div>
+
+  </div>
+
+  <div class="tip">
+
+    Player 1 di kiri • Player 2 di kanan
+    • Telapak terbuka = aktif
+
+  </div>
+
 </section>
 
-<section id="resultScreen" class="result" style="display:none">
-  <div class="trophy">🏆</div><h1>GAME SELESAI!</h1>
-  <div class="leaderboard">
-    <div class="rank"><span>🟢 PLAYER 1</span><b id="finalScore1">0 POIN</b></div>
-    <div class="rank"><span>🟣 PLAYER 2</span><b id="finalScore2">0 POIN</b></div>
+
+<!-- ==================================================
+     RESULT
+=================================================== -->
+
+<section
+  id="resultScreen"
+  class="result"
+  style="display:none">
+
+  <div class="trophy">
+    🏆
   </div>
-  <h2 id="winner">🎉 HEBAT!</h2>
-  <button id="restartButton" class="primary">🔄 MAIN LAGI</button>
+
+  <h1>
+    GAME SELESAI!
+  </h1>
+
+  <div class="leaderboard">
+
+    <div class="rank">
+
+      <span>
+        🟢 PLAYER 1
+      </span>
+
+      <b id="finalScore1">
+        0 POIN
+      </b>
+
+    </div>
+
+    <div class="rank">
+
+      <span>
+        🟣 PLAYER 2
+      </span>
+
+      <b id="finalScore2">
+        0 POIN
+      </b>
+
+    </div>
+
+  </div>
+
+  <h2 id="winner">
+    🎉 HEBAT!
+  </h2>
+
+  <button
+    id="restartButton">
+
+    🔄 MAIN LAGI
+
+  </button>
+
 </section>
+
 </div>
 
+
 <script type="module">
-const MEDIAPIPE_VERSION="0.10.22";
-const WASM_URL=`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`;
-const MODEL_URL="https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
-const GAS_ENDPOINT=""; // Isi dengan URL /exec Apps Script jika ingin menyimpan skor.
+
+/* =====================================================
+   MEDIA PIPE
+===================================================== */
+
+import {
+  FilesetResolver,
+  HandLandmarker
+}
+from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/vision_bundle.mjs";
+
+
+/* =====================================================
+   CONFIG
+===================================================== */
+
+const WASM_URL =
+"https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm";
+
+const MODEL_URL =
+"https://storage.googleapis.com/mediapipe-models/" +
+"hand_landmarker/hand_landmarker/float16/1/" +
+"hand_landmarker.task";
+
+
+/* =====================================================
+   ELEMENT
+===================================================== */
+
+const camera =
+document.getElementById("camera");
+
+const canvas =
+document.getElementById("gameCanvas");
+
+const ctx =
+canvas.getContext("2d");
+
+const startScreen =
+document.getElementById("startScreen");
+
+const gameScreen =
+document.getElementById("gameScreen");
+
+const resultScreen =
+document.getElementById("resultScreen");
+
+const startButton =
+document.getElementById("startButton");
+
+const restartButton =
+document.getElementById("restartButton");
+
+const errorBox =
+document.getElementById("error");
+
+const questionText =
+document.getElementById("questionText");
+
+const score1 =
+document.getElementById("score1");
+
+const score2 =
+document.getElementById("score2");
+
+const roundText =
+document.getElementById("round");
+
+const feedback1 =
+document.getElementById("feedback1");
+
+const feedback2 =
+document.getElementById("feedback2");
+
+const progressBar =
+document.getElementById("progressBar");
+
+const countdown =
+document.getElementById("countdown");
+
+
+/* =====================================================
+   QUESTION BANK
+===================================================== */
 
 const QUESTIONS = [
-  {
-    "question": "Allah yang selalu menjaga seluruh makhluk-Nya disebut...",
-    "answers": [
-      "Al-Wali",
-      "Al-Hafiz",
-      "Al-'Alim",
-      "Al-Khabir",
-      "Ar-Rahman",
-      "Al-Malik"
-    ],
-    "correct": "Al-Hafiz",
-    "explanation": "Al-Hafiz berarti Allah Maha Memelihara."
-  },
-  {
-    "question": "Allah yang Maha Melindungi disebut...",
-    "answers": [
-      "Al-'Alim",
-      "Al-Wali",
-      "Al-Khabir",
-      "Al-Hafiz",
-      "Al-Malik",
-      "Al-Quddus"
-    ],
-    "correct": "Al-Wali",
-    "explanation": "Al-Wali berarti Allah Maha Melindungi."
-  },
-  {
-    "question": "Allah yang Maha Mengetahui disebut...",
-    "answers": [
-      "Al-Khabir",
-      "Al-Hafiz",
-      "Al-'Alim",
-      "Al-Wali",
-      "Al-Khaliq",
-      "Al-Malik"
-    ],
-    "correct": "Al-'Alim",
-    "explanation": "Al-'Alim berarti Allah Maha Mengetahui."
-  },
-  {
-    "question": "Allah yang Maha Teliti dan mengetahui segala sesuatu disebut...",
-    "answers": [
-      "Al-Hafiz",
-      "Al-Khabir",
-      "Al-Wali",
-      "Al-'Alim",
-      "Ar-Rahim",
-      "Al-Malik"
-    ],
-    "correct": "Al-Khabir",
-    "explanation": "Al-Khabir berarti Allah Maha Teliti dan Mengetahui segala sesuatu."
-  },
-  {
-    "question": "Menjaga tanaman sekolah merupakan contoh perilaku yang sesuai dengan...",
-    "answers": [
-      "Al-Hafiz",
-      "Al-Wali",
-      "Al-'Alim",
-      "Al-Khabir",
-      "Al-Malik",
-      "Ar-Rahman"
-    ],
-    "correct": "Al-Hafiz",
-    "explanation": "Kita belajar menjaga dan memelihara sesuatu."
-  },
-  {
-    "question": "Ketika takut, kita memohon perlindungan kepada Allah sebagai...",
-    "answers": [
-      "Al-Khabir",
-      "Al-Wali",
-      "Al-Hafiz",
-      "Al-'Alim",
-      "Al-Malik",
-      "Ar-Rahim"
-    ],
-    "correct": "Al-Wali",
-    "explanation": "Al-Wali berarti Allah Maha Melindungi."
-  },
-  {
-    "question": "Kita tetap jujur walaupun tidak ada orang yang melihat karena yakin Allah...",
-    "answers": [
-      "Menjaga rumah",
-      "Mengetahui semua perbuatan",
-      "Hanya melihat sekolah",
-      "Tidak mengetahui hati",
-      "Hanya melihat siang hari",
-      "Tidak mengetahui pikiran"
-    ],
-    "correct": "Mengetahui semua perbuatan",
-    "explanation": "Allah Maha Mengetahui apa yang kita lakukan."
-  },
-  {
-    "question": "Memeriksa tugas dengan teliti sebelum dikumpulkan dekat dengan makna...",
-    "answers": [
-      "Al-Wali",
-      "Al-Hafiz",
-      "Al-Khabir",
-      "Al-'Alim",
-      "Al-Malik",
-      "Ar-Rahman"
-    ],
-    "correct": "Al-Khabir",
-    "explanation": "Al-Khabir berarti Maha Teliti."
-  },
-  {
-    "question": "Menolong dan menjaga teman saat bermain sesuai dengan...",
-    "answers": [
-      "Al-Wali",
-      "Al-Khabir",
-      "Al-'Alim",
-      "Al-Hafiz",
-      "Al-Malik",
-      "Al-Quddus"
-    ],
-    "correct": "Al-Wali",
-    "explanation": "Melindungi dan membantu teman adalah perilaku baik."
-  },
-  {
-    "question": "Empat Asmaul Husna yang kita pelajari adalah...",
-    "answers": [
-      "Al-Hafiz, Al-Wali, Al-'Alim, Al-Khabir",
-      "Al-Malik, Al-Quddus, Ar-Rahman, Ar-Rahim",
-      "Al-Khaliq, Al-Bari', Al-Musawwir, Al-Ahad",
-      "Al-Ghaffar, At-Tawwab, Al-Qawi, Al-Matin",
-      "Al-Fattah, Ar-Razzaq, Al-Muqit, Al-Hasib",
-      "As-Sami', Al-Basir, Al-Adl, Al-Latif"
-    ],
-    "correct": "Al-Hafiz, Al-Wali, Al-'Alim, Al-Khabir",
-    "explanation": "Empat nama yang dipelajari adalah Al-Hafiz, Al-Wali, Al-'Alim, dan Al-Khabir."
-  },
-  {
-    "question": "Allah mengetahui apa yang kita lakukan walaupun tidak ada orang yang melihat. Nama-Nya adalah...",
-    "answers": [
-      "Al-'Alim",
-      "Al-Wali",
-      "Al-Hafiz",
-      "Al-Malik",
-      "Al-Khaliq",
-      "Al-Quddus"
-    ],
-    "correct": "Al-'Alim",
-    "explanation": "Al-'Alim berarti Allah Maha Mengetahui."
-  },
-  {
-    "question": "Merawat barang yang dipinjam dari teman merupakan contoh...",
-    "answers": [
-      "Al-Hafiz",
-      "Al-Wali",
-      "Al-Khabir",
-      "Al-'Alim",
-      "Al-Malik",
-      "Ar-Rahman"
-    ],
-    "correct": "Al-Hafiz",
-    "explanation": "Kita belajar menjaga barang yang dipercayakan kepada kita."
-  },
-  {
-    "question": "Allah mengetahui sesuatu dengan sangat teliti. Ini sesuai dengan...",
-    "answers": [
-      "Al-Wali",
-      "Al-Hafiz",
-      "Al-Khabir",
-      "Al-'Alim",
-      "Al-Malik",
-      "Al-Quddus"
-    ],
-    "correct": "Al-Khabir",
-    "explanation": "Al-Khabir berarti Allah Maha Teliti."
-  },
-  {
-    "question": "Saat membantu teman agar tidak jatuh, kita menunjukkan sikap...",
-    "answers": [
-      "Melindungi",
-      "Mengejek",
-      "Mengganggu",
-      "Mengabaikan",
-      "Merusak",
-      "Menakuti"
-    ],
-    "correct": "Melindungi",
-    "explanation": "Melindungi teman adalah perilaku baik."
-  },
-  {
-    "question": "Jika kita menemukan sampah di kelas, sebaiknya...",
-    "answers": [
-      "Membiarkannya",
-      "Menendangnya",
-      "Menjaganya dan membuang pada tempatnya",
-      "Menyembunyikannya",
-      "Melemparkannya",
-      "Menginjaknya"
-    ],
-    "correct": "Menjaganya dan membuang pada tempatnya",
-    "explanation": "Menjaga kebersihan adalah bentuk perilaku baik."
-  },
-  {
-    "question": "Allah yang mengetahui segala sesuatu disebut...",
-    "answers": [
-      "Al-'Alim",
-      "Al-Hafiz",
-      "Al-Wali",
-      "Al-Malik",
-      "Ar-Rahman",
-      "Al-Quddus"
-    ],
-    "correct": "Al-'Alim",
-    "explanation": "Al-'Alim berarti Allah Maha Mengetahui."
-  },
-  {
-    "question": "Sebelum mengumpulkan tugas, kita memeriksanya kembali. Ini contoh sikap...",
-    "answers": [
-      "Teliti",
-      "Ceroboh",
-      "Malas",
-      "Buru-buru",
-      "Lalai",
-      "Acuh"
-    ],
-    "correct": "Teliti",
-    "explanation": "Teliti berarti memeriksa sesuatu dengan baik."
-  },
-  {
-    "question": "Allah melindungi hamba-Nya. Asmaul Husna yang sesuai adalah...",
-    "answers": [
-      "Al-Wali",
-      "Al-Khabir",
-      "Al-Hafiz",
-      "Al-'Alim",
-      "Al-Malik",
-      "Al-Khaliq"
-    ],
-    "correct": "Al-Wali",
-    "explanation": "Al-Wali berarti Allah Maha Melindungi."
-  },
-  {
-    "question": "Menjaga adik ketika bermain merupakan contoh perilaku...",
-    "answers": [
-      "Memelihara",
-      "Mengejek",
-      "Mengganggu",
-      "Membiarkan",
-      "Merusak",
-      "Menakuti"
-    ],
-    "correct": "Memelihara",
-    "explanation": "Menjaga dan merawat merupakan perilaku memelihara."
-  },
-  {
-    "question": "Nama Allah yang berarti Maha Memelihara adalah...",
-    "answers": [
-      "Al-Hafiz",
-      "Al-Wali",
-      "Al-'Alim",
-      "Al-Khabir",
-      "Al-Malik",
-      "Al-Quddus"
-    ],
-    "correct": "Al-Hafiz",
-    "explanation": "Al-Hafiz berarti Allah Maha Memelihara."
-  }
+
+{
+ question:
+ "Allah yang selalu menjaga seluruh makhluk-Nya disebut...",
+
+ answers:[
+   "Al-Wali",
+   "Al-Hafiz",
+   "Al-'Alim",
+   "Al-Khabir",
+   "Ar-Rahman",
+   "Al-Malik"
+ ],
+
+ correct:"Al-Hafiz",
+
+ explanation:
+ "Al-Hafiz berarti Allah Maha Memelihara."
+},
+
+{
+ question:
+ "Allah yang Maha Melindungi disebut...",
+
+ answers:[
+   "Al-'Alim",
+   "Al-Wali",
+   "Al-Khabir",
+   "Al-Hafiz",
+   "Al-Malik",
+   "Al-Quddus"
+ ],
+
+ correct:"Al-Wali",
+
+ explanation:
+ "Al-Wali berarti Allah Maha Melindungi."
+},
+
+{
+ question:
+ "Allah yang Maha Mengetahui disebut...",
+
+ answers:[
+   "Al-Khabir",
+   "Al-Hafiz",
+   "Al-'Alim",
+   "Al-Wali",
+   "Al-Khaliq",
+   "Al-Malik"
+ ],
+
+ correct:"Al-'Alim",
+
+ explanation:
+ "Al-'Alim berarti Allah Maha Mengetahui."
+},
+
+{
+ question:
+ "Allah yang Maha Teliti dan mengetahui segala sesuatu disebut...",
+
+ answers:[
+   "Al-Hafiz",
+   "Al-Khabir",
+   "Al-Wali",
+   "Al-'Alim",
+   "Ar-Rahim",
+   "Al-Malik"
+ ],
+
+ correct:"Al-Khabir",
+
+ explanation:
+ "Al-Khabir berarti Allah Maha Teliti dan Mengetahui segala sesuatu."
+},
+
+{
+ question:
+ "Menjaga tanaman sekolah merupakan contoh perilaku yang sesuai dengan...",
+
+ answers:[
+   "Al-Hafiz",
+   "Al-Wali",
+   "Al-'Alim",
+   "Al-Khabir",
+   "Al-Malik",
+   "Ar-Rahman"
+ ],
+
+ correct:"Al-Hafiz",
+
+ explanation:
+ "Kita belajar menjaga dan memelihara sesuatu."
+},
+
+{
+ question:
+ "Ketika takut, kita memohon perlindungan kepada Allah sebagai...",
+
+ answers:[
+   "Al-Khabir",
+   "Al-Wali",
+   "Al-Hafiz",
+   "Al-'Alim",
+   "Al-Malik",
+   "Ar-Rahim"
+ ],
+
+ correct:"Al-Wali",
+
+ explanation:
+ "Al-Wali berarti Allah Maha Melindungi."
+},
+
+{
+ question:
+ "Kita tetap jujur walaupun tidak ada orang yang melihat karena yakin Allah...",
+
+ answers:[
+   "Menjaga rumah",
+   "Mengetahui semua perbuatan",
+   "Hanya melihat sekolah",
+   "Tidak mengetahui hati",
+   "Hanya melihat siang hari",
+   "Tidak mengetahui pikiran"
+ ],
+
+ correct:"Mengetahui semua perbuatan",
+
+ explanation:
+ "Allah Maha Mengetahui apa yang kita lakukan."
+},
+
+{
+ question:
+ "Memeriksa tugas dengan teliti sebelum dikumpulkan dekat dengan makna...",
+
+ answers:[
+   "Al-Wali",
+   "Al-Hafiz",
+   "Al-Khabir",
+   "Al-'Alim",
+   "Al-Malik",
+   "Ar-Rahman"
+ ],
+
+ correct:"Al-Khabir",
+
+ explanation:
+ "Al-Khabir berarti Maha Teliti."
+},
+
+{
+ question:
+ "Menolong dan menjaga teman saat bermain sesuai dengan...",
+
+ answers:[
+   "Al-Wali",
+   "Al-Khabir",
+   "Al-'Alim",
+   "Al-Hafiz",
+   "Al-Malik",
+   "Al-Quddus"
+ ],
+
+ correct:"Al-Wali",
+
+ explanation:
+ "Melindungi dan membantu teman adalah perilaku baik."
+},
+
+{
+ question:
+ "Empat Asmaul Husna yang kita pelajari adalah...",
+
+ answers:[
+   "Al-Hafiz, Al-Wali, Al-'Alim, Al-Khabir",
+   "Al-Malik, Al-Quddus, Ar-Rahman, Ar-Rahim",
+   "Al-Khaliq, Al-Bari', Al-Musawwir, Al-Ahad",
+   "Al-Ghaffar, At-Tawwab, Al-Qawi, Al-Matin",
+   "Al-Fattah, Ar-Razzaq, Al-Muqit, Al-Hasib",
+   "As-Sami', Al-Basir, Al-Adl, Al-Latif"
+ ],
+
+ correct:
+ "Al-Hafiz, Al-Wali, Al-'Alim, Al-Khabir",
+
+ explanation:
+ "Empat nama yang dipelajari adalah Al-Hafiz, Al-Wali, Al-'Alim, dan Al-Khabir."
+},
+
+{
+ question:
+ "Allah mengetahui apa yang kita lakukan walaupun tidak ada orang yang melihat. Nama-Nya adalah...",
+
+ answers:[
+   "Al-'Alim",
+   "Al-Wali",
+   "Al-Hafiz",
+   "Al-Malik",
+   "Al-Khaliq",
+   "Al-Quddus"
+ ],
+
+ correct:"Al-'Alim",
+
+ explanation:
+ "Al-'Alim berarti Allah Maha Mengetahui."
+},
+
+{
+ question:
+ "Merawat barang yang dipinjam dari teman merupakan contoh...",
+
+ answers:[
+   "Al-Hafiz",
+   "Al-Wali",
+   "Al-Khabir",
+   "Al-'Alim",
+   "Al-Malik",
+   "Ar-Rahman"
+ ],
+
+ correct:"Al-Hafiz",
+
+ explanation:
+ "Kita belajar menjaga barang yang dipercayakan kepada kita."
+},
+
+{
+ question:
+ "Allah mengetahui sesuatu dengan sangat teliti. Ini sesuai dengan...",
+
+ answers:[
+   "Al-Wali",
+   "Al-Hafiz",
+   "Al-Khabir",
+   "Al-'Alim",
+   "Al-Malik",
+   "Al-Quddus"
+ ],
+
+ correct:"Al-Khabir",
+
+ explanation:
+ "Al-Khabir berarti Allah Maha Teliti."
+},
+
+{
+ question:
+ "Saat membantu teman agar tidak jatuh, kita menunjukkan sikap...",
+
+ answers:[
+   "Melindungi",
+   "Mengejek",
+   "Mengganggu",
+   "Mengabaikan",
+   "Merusak",
+   "Menakuti"
+ ],
+
+ correct:"Melindungi",
+
+ explanation:
+ "Melindungi teman adalah perilaku baik."
+},
+
+{
+ question:
+ "Jika kita menemukan sampah di kelas, sebaiknya...",
+
+ answers:[
+   "Membiarkannya",
+   "Menendangnya",
+   "Menjaganya dan membuang pada tempatnya",
+   "Menyembunyikannya",
+   "Melemparkannya",
+   "Menginjaknya"
+ ],
+
+ correct:
+ "Menjaganya dan membuang pada tempatnya",
+
+ explanation:
+ "Menjaga kebersihan adalah bentuk perilaku baik."
+},
+
+{
+ question:
+ "Allah yang mengetahui segala sesuatu disebut...",
+
+ answers:[
+   "Al-'Alim",
+   "Al-Hafiz",
+   "Al-Wali",
+   "Al-Malik",
+   "Ar-Rahman",
+   "Al-Quddus"
+ ],
+
+ correct:"Al-'Alim",
+
+ explanation:
+ "Al-'Alim berarti Allah Maha Mengetahui."
+},
+
+{
+ question:
+ "Sebelum mengumpulkan tugas, kita memeriksanya kembali. Ini contoh sikap...",
+
+ answers:[
+   "Teliti",
+   "Ceroboh",
+   "Malas",
+   "Buru-buru",
+   "Lalai",
+   "Acuh"
+ ],
+
+ correct:"Teliti",
+
+ explanation:
+ "Teliti berarti memeriksa sesuatu dengan baik."
+},
+
+{
+ question:
+ "Allah melindungi hamba-Nya. Asmaul Husna yang sesuai adalah...",
+
+ answers:[
+   "Al-Wali",
+   "Al-Khabir",
+   "Al-Hafiz",
+   "Al-'Alim",
+   "Al-Malik",
+   "Al-Khaliq"
+ ],
+
+ correct:"Al-Wali",
+
+ explanation:
+ "Al-Wali berarti Allah Maha Melindungi."
+},
+
+{
+ question:
+ "Menjaga adik ketika bermain merupakan contoh perilaku...",
+
+ answers:[
+   "Memelihara",
+   "Mengejek",
+   "Mengganggu",
+   "Membiarkan",
+   "Merusak",
+   "Menakuti"
+ ],
+
+ correct:"Memelihara",
+
+ explanation:
+ "Menjaga dan merawat merupakan perilaku memelihara."
+},
+
+{
+ question:
+ "Nama Allah yang berarti Maha Memelihara adalah...",
+
+ answers:[
+   "Al-Hafiz",
+   "Al-Wali",
+   "Al-'Alim",
+   "Al-Khabir",
+   "Al-Malik",
+   "Al-Quddus"
+ ],
+
+ correct:"Al-Hafiz",
+
+ explanation:
+ "Al-Hafiz berarti Allah Maha Memelihara."
+}
+
 ];
 
-const $=id=>document.getElementById(id);
-const camera=$("camera"),canvas=$("gameCanvas"),ctx=canvas.getContext("2d");
-const startScreen=$("startScreen"),gameScreen=$("gameScreen"),resultScreen=$("resultScreen");
-const startButton=$("startButton"),restartButton=$("restartButton"),statusBox=$("status");
-const questionText=$("questionText"),score1=$("score1"),score2=$("score2"),roundText=$("round"),timerText=$("timer");
-const feedback1=$("feedback1"),feedback2=$("feedback2"),progressBar=$("progressBar"),countdownEl=$("countdown");
 
-let FilesetResolver,HandLandmarker,handLandmarker=null,stream=null,raf=null,lastTime=0;
-let currentQuestion=0,scoreP1=0,scoreP2=0,gameRunning=false,roundStartedAt=0,nextTimeout=null;
-const ROUND_SECONDS=15;
+/* =====================================================
+   GAME STATE
+===================================================== */
 
-const players={1:{hand:null,open:false,locked:false,bubbles:[]},2:{hand:null,open:false,locked:false,bubbles:[]}};
+let currentQuestion = 0;
 
-function status(msg,type="info"){statusBox.style.display="block";statusBox.className=`status ${type}`;statusBox.textContent=msg}
-function updateScores(){score1.textContent=scoreP1;score2.textContent=scoreP2}
-function palm(lm){return {x:(lm[0].x+lm[5].x+lm[9].x+lm[13].x+lm[17].x)/5,y:(lm[0].y+lm[5].y+lm[9].y+lm[13].y+lm[17].y)/5}}
-function openPalm(lm){
-  if(!lm||lm.length<21)return false;
-  const fingers=[
-    lm[8].y<lm[6].y-0.018,
-    lm[12].y<lm[10].y-0.018,
-    lm[16].y<lm[14].y-0.018,
-    lm[20].y<lm[18].y-0.018
-  ];
-  const p=palm(lm);
-  const thumb=Math.hypot(lm[4].x-p.x,lm[4].y-p.y)>Math.hypot(lm[3].x-p.x,lm[3].y-p.y)*1.05;
-  return [thumb,...fingers].filter(Boolean).length>=4;
+let scoreP1 = 0;
+let scoreP2 = 0;
+
+let gameRunning = false;
+
+let handLandmarker = null;
+
+let animationFrame = null;
+
+let lastTimestamp = 0;
+
+
+/*
+ Player data
+*/
+
+const players = {
+
+  1:{
+    hand:null,
+    open:false,
+    locked:false,
+    bubbles:[]
+  },
+
+  2:{
+    hand:null,
+    open:false,
+    locked:false,
+    bubbles:[]
+  }
+
+};
+
+
+/* =====================================================
+   CREATE BUBBLES
+===================================================== */
+
+function createBubbles(player) {
+
+  const question =
+    QUESTIONS[currentQuestion];
+
+  /*
+    Acak jawaban
+  */
+
+  const answers =
+    [...question.answers]
+      .sort(
+        () =>
+          Math.random() -
+          .5
+      );
+
+  /*
+    Buat lingkaran
+  */
+
+  players[player].bubbles =
+    answers.map(
+      (answer,index)=>({
+
+        id:
+          player +
+          "_" +
+          currentQuestion +
+          "_" +
+          index +
+          "_" +
+          Date.now(),
+
+        text:answer,
+
+        x:
+          player === 1
+
+          ?
+
+          0.08 +
+          Math.random()*0.40
+
+          :
+
+          0.58 +
+          Math.random()*0.34,
+
+        y:
+          -0.10 -
+          Math.random()*0.65,
+
+        speed:
+          0.00025 +
+          Math.random()*0.00014,
+
+        radius:
+          0.060,
+
+        hit:false
+
+      })
+    );
+
 }
-function makeBubbles(player){
-  const answers=[...QUESTIONS[currentQuestion].answers].sort(()=>Math.random()-.5);
-  players[player].bubbles=answers.map((text,i)=>({
-    text,id:`${player}-${currentQuestion}-${i}-${Math.random()}`,
-    x:player===1?.08+Math.random()*.39:.57+Math.random()*.36,
-    y:-.15-Math.random()*.9,
-    speed:.00020+Math.random()*.00012,r:.058,hit:false
-  }));
+
+
+/* =====================================================
+   LOAD QUESTION
+===================================================== */
+
+function loadQuestion() {
+
+  const q =
+    QUESTIONS[currentQuestion];
+
+  questionText.textContent =
+    q.question;
+
+  roundText.textContent =
+    `SOAL ${currentQuestion+1} / ${QUESTIONS.length}`;
+
+  progressBar.style.width =
+    (
+      ((currentQuestion+1) /
+      QUESTIONS.length)
+      * 100
+    ) + "%";
+
+
+  players[1].locked = false;
+  players[2].locked = false;
+
+  players[1].hand = null;
+  players[2].hand = null;
+
+  players[1].open = false;
+  players[2].open = false;
+
+  feedback1.textContent =
+    "🖐️ Tangkap jawaban!";
+
+  feedback2.textContent =
+    "🖐️ Tangkap jawaban!";
+
+  feedback1.className =
+    "feedback";
+
+  feedback2.className =
+    "feedback";
+
+
+  createBubbles(1);
+
+  createBubbles(2);
+
 }
-function loadQuestion(){
-  const q=QUESTIONS[currentQuestion];
-  questionText.textContent=q.question;
-  roundText.textContent=`SOAL ${currentQuestion+1} / ${QUESTIONS.length}`;
-  progressBar.style.width=`${((currentQuestion+1)/QUESTIONS.length)*100}%`;
-  [1,2].forEach(p=>{players[p].locked=false;players[p].hand=null;players[p].open=false;makeBubbles(p)});
-  feedback1.className=feedback2.className="feedback";
-  feedback1.textContent=feedback2.textContent="🖐️ Tangkap jawaban!";
-}
-async function cameraStart(){
-  if(!window.isSecureContext)throw new Error("Halaman bukan secure context (HTTPS).");
-  if(!navigator.mediaDevices?.getUserMedia)throw new Error("Browser tidak menyediakan getUserMedia().");
-  stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720},facingMode:"user"},audio:false});
-  camera.srcObject=stream;
+
+
+/* =====================================================
+   CAMERA
+===================================================== */
+
+async function startCamera() {
+
+  const stream =
+    await navigator
+      .mediaDevices
+      .getUserMedia({
+
+        video:{
+          width:{
+            ideal:1280
+          },
+
+          height:{
+            ideal:720
+          },
+
+          facingMode:
+            "user"
+        },
+
+        audio:false
+
+      });
+
+
+  camera.srcObject =
+    stream;
+
+
   await camera.play();
+
 }
-async function mediaPipeStart(){
-  const m=await import(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/vision_bundle.mjs`);
-  FilesetResolver=m.FilesetResolver;HandLandmarker=m.HandLandmarker;
-  const vision=await FilesetResolver.forVisionTasks(WASM_URL);
-  const opts={baseOptions:{modelAssetPath:MODEL_URL},runningMode:"VIDEO",numHands:2,minHandDetectionConfidence:.5,minHandPresenceConfidence:.5,minTrackingConfidence:.5};
-  try{handLandmarker=await HandLandmarker.createFromOptions(vision,{...opts,baseOptions:{...opts.baseOptions,delegate:"GPU"}})}
-  catch(e){console.warn("GPU gagal, CPU dipakai",e);handLandmarker=await HandLandmarker.createFromOptions(vision,{...opts,baseOptions:{...opts.baseOptions,delegate:"CPU"}})}
+
+
+/* =====================================================
+   MEDIAPIPE
+===================================================== */
+
+async function initializeMediaPipe() {
+
+  const vision =
+    await FilesetResolver
+      .forVisionTasks(
+        WASM_URL
+      );
+
+
+  handLandmarker =
+    await HandLandmarker
+      .createFromOptions(
+        vision,
+        {
+
+          baseOptions:{
+
+            modelAssetPath:
+              MODEL_URL,
+
+            delegate:
+              "GPU"
+
+          },
+
+          runningMode:
+            "VIDEO",
+
+          numHands:2,
+
+          minHandDetectionConfidence:
+            0.55,
+
+          minHandPresenceConfidence:
+            0.55,
+
+          minTrackingConfidence:
+            0.55
+
+        }
+      );
+
 }
-function collision(hand,b){
-  if(!hand||!hand.open||b.hit)return false;
-  return Math.hypot(hand.x-b.x,hand.y-b.y)<.065+b.r;
-}
-function sound(ok){
-  try{
-    const A=window.AudioContext||window.webkitAudioContext;if(!A)return;
-    const ac=new A(),o=ac.createOscillator(),g=ac.createGain();
-    o.frequency.value=ok?720:180;o.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(.0001,ac.currentTime);g.gain.exponentialRampToValueAtTime(.12,ac.currentTime+.01);g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+.22);o.start();o.stop(ac.currentTime+.23);
-  }catch(e){}
-}
-function catchAnswer(p,b){
-  if(players[p].locked)return;
-  b.hit=true;players[p].locked=true;
-  const correct=b.text===QUESTIONS[currentQuestion].correct;
-  if(correct){if(p===1)scoreP1+=10;else scoreP2+=10;showFeedback(p,"⭐ BENAR! +10",true);sound(true)}
-  else{showFeedback(p,"💡 "+QUESTIONS[currentQuestion].explanation,false);sound(false)}
-  updateScores();
-  if(players[1].locked&&players[2].locked){
-    clearTimeout(nextTimeout);nextTimeout=setTimeout(nextQuestion,850);
+
+
+/* =====================================================
+   DETECT FIVE FINGERS
+===================================================== */
+
+function detectFiveFinger(lm) {
+
+  if(
+    !lm ||
+    lm.length < 21
+  ){
+
+    return false;
+
   }
+
+
+  /*
+    Jari:
+    index 8
+    middle 12
+    ring 16
+    pinky 20
+  */
+
+  const index =
+    lm[8].y <
+    lm[6].y -
+    0.025;
+
+
+  const middle =
+    lm[12].y <
+    lm[10].y -
+    0.025;
+
+
+  const ring =
+    lm[16].y <
+    lm[14].y -
+    0.025;
+
+
+  const pinky =
+    lm[20].y <
+    lm[18].y -
+    0.025;
+
+
+  /*
+    Ibu jari
+  */
+
+  const palmX =
+    (
+      lm[0].x +
+      lm[5].x +
+      lm[9].x +
+      lm[13].x +
+      lm[17].x
+    ) / 5;
+
+
+  const palmY =
+    (
+      lm[0].y +
+      lm[5].y +
+      lm[9].y +
+      lm[13].y +
+      lm[17].y
+    ) / 5;
+
+
+  const thumbDistance =
+    Math.hypot(
+      lm[4].x - palmX,
+      lm[4].y - palmY
+    );
+
+
+  const thumbJoint =
+    Math.hypot(
+      lm[3].x - palmX,
+      lm[3].y - palmY
+    );
+
+
+  const thumb =
+    thumbDistance >
+    thumbJoint *
+    1.10;
+
+
+  const count =
+    [
+      thumb,
+      index,
+      middle,
+      ring,
+      pinky
+    ]
+    .filter(Boolean)
+    .length;
+
+
+  return count >= 4;
+
 }
-function showFeedback(p,text,ok){const e=p===1?feedback1:feedback2;e.textContent=text;e.className=`feedback ${ok?"correct":"wrong"}`}
-function draw(result,dt){
-  const w=canvas.width= camera.videoWidth||1280,h=canvas.height=camera.videoHeight||720;
-  ctx.clearRect(0,0,w,h);ctx.strokeStyle="rgba(255,255,255,.45)";ctx.lineWidth=4;ctx.setLineDash([15,15]);ctx.beginPath();ctx.moveTo(w/2,0);ctx.lineTo(w/2,h);ctx.stroke();ctx.setLineDash([]);
-  players[1].hand=null;players[2].hand=null;
-  for(const lm of (result?.landmarks||[])){
-    const p=palm(lm),x=1-p.x,open=openPalm(lm),player=x<.5?1:2;
-    players[player].hand={x,y:p.y,open};players[player].open=open;
-    const px=x*w,py=p.y*h;
-    ctx.beginPath();ctx.arc(px,py,open?55:38,0,Math.PI*2);ctx.fillStyle=open?(player===1?"rgba(34,197,94,.25)":"rgba(168,85,247,.25)"):"rgba(245,158,11,.25)";ctx.fill();ctx.strokeStyle=open?(player===1?"#22c55e":"#a855f7"):"#f59e0b";ctx.lineWidth=5;ctx.stroke();
-    ctx.font="35px Arial";ctx.textAlign="center";ctx.fillStyle="#fff";ctx.fillText(open?"🖐️":"✋",px,py+12);
+
+
+/* =====================================================
+   PALM CENTER
+===================================================== */
+
+function getPalm(lm) {
+
+  return {
+
+    x:
+      (
+        lm[0].x +
+        lm[5].x +
+        lm[9].x +
+        lm[13].x +
+        lm[17].x
+      ) / 5,
+
+    y:
+      (
+        lm[0].y +
+        lm[5].y +
+        lm[9].y +
+        lm[13].y +
+        lm[17].y
+      ) / 5
+
+  };
+
+}
+
+
+/* =====================================================
+   COLLISION
+===================================================== */
+
+function collision(
+  hand,
+  bubble
+){
+
+  if(
+    !hand ||
+    !bubble ||
+    !hand.open ||
+    bubble.hit
+  ){
+
+    return false;
+
   }
-  for(const p of [1,2]){
-    for(const b of players[p].bubbles){
-      if(b.hit)continue;
-      b.y+=b.speed*dt*1000;
-      if(b.y>1.15){b.y=-.15-Math.random()*.45;b.x=p===1?.08+Math.random()*.39:.57+Math.random()*.36}
-      if(collision(players[p].hand,b)){catchAnswer(p,b);continue}
-      const x=b.x*w,y=b.y*h,r=b.r*Math.min(w,h);
-      const grad=ctx.createRadialGradient(x-r*.35,y-r*.35,r*.1,x,y,r);
-      if(p===1){grad.addColorStop(0,"#bbf7d0");grad.addColorStop(1,"#16a34a")}else{grad.addColorStop(0,"#e9d5ff");grad.addColorStop(1,"#7e22ce")}
-      ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=grad;ctx.fill();ctx.strokeStyle="#fff";ctx.lineWidth=4;ctx.stroke();
-      ctx.fillStyle="#fff";ctx.font="900 16px Nunito";ctx.textAlign="center";
-      const words=b.text.split(" "),lines=[];let line="";
-      for(const word of words){const test=line?line+" "+word:word;if(ctx.measureText(test).width>r*1.55&&line){lines.push(line);line=word}else line=test}if(line)lines.push(line);
-      lines.slice(0,3).forEach((t,i)=>ctx.fillText(t,x,y+(i-(Math.min(lines.length,3)-1)/2)*20));
+
+
+  const dx =
+    hand.x -
+    bubble.x;
+
+
+  const dy =
+    hand.y -
+    bubble.y;
+
+
+  const distance =
+    Math.sqrt(
+      dx*dx +
+      dy*dy
+    );
+
+
+  /*
+    Radius tangan
+    + radius lingkaran
+  */
+
+  return (
+    distance <
+    (
+      0.065 +
+      bubble.radius
+    )
+  );
+
+}
+
+
+/* =====================================================
+   ANSWER
+===================================================== */
+
+function catchAnswer(
+  player,
+  bubble
+){
+
+  if(
+    players[player].locked
+  ){
+
+    return;
+
+  }
+
+
+  bubble.hit =
+    true;
+
+
+  players[player].locked =
+    true;
+
+
+  const q =
+    QUESTIONS[currentQuestion];
+
+
+  const correct =
+    bubble.text ===
+    q.correct;
+
+
+  if(player === 1){
+
+    if(correct){
+
+      scoreP1 += 10;
+
     }
+
+  }else{
+
+    if(correct){
+
+      scoreP2 += 10;
+
+    }
+
   }
+
+
+  updateScores();
+
+
+  if(correct){
+
+    showCorrect(
+      player
+    );
+
+  }else{
+
+    showWrong(
+      player,
+      q.explanation
+    );
+
+  }
+
+
+  /*
+    Jika kedua pemain
+    sudah menjawab
+  */
+
+  if(
+    players[1].locked &&
+    players[2].locked
+  ){
+
+    setTimeout(
+      nextQuestion,
+      1500
+    );
+
+  }
+
 }
-function tick(now){
-  if(!gameRunning)return;
-  const dt=lastTime?Math.min(.033,(now-lastTime)/1000):.016;lastTime=now;
-  try{if(camera.readyState>=2&&handLandmarker)draw(handLandmarker.detectForVideo(camera,now),dt)}catch(e){console.error(e)}
-  const remain=Math.max(0,Math.ceil(ROUND_SECONDS-(now-roundStartedAt)/1000));timerText.textContent=`⏱️ ${remain}`;
-  if(remain<=0)timeoutRound();
-  raf=requestAnimationFrame(tick);
+
+
+/* =====================================================
+   FEEDBACK
+===================================================== */
+
+function showCorrect(
+  player
+){
+
+  const element =
+    player === 1
+    ? feedback1
+    : feedback2;
+
+
+  element.textContent =
+    "⭐ BENAR! +10";
+
+
+  element.className =
+    "feedback correct";
+
+
+  playSound(true);
+
 }
-function startTimer(){roundStartedAt=performance.now();timerText.textContent=`⏱️ ${ROUND_SECONDS}`}
-function timeoutRound(){
-  if(!gameRunning)return;
-  gameRunning=false;
-  [1,2].forEach(p=>{if(!players[p].locked){players[p].locked=true;showFeedback(p,"⏱️ Waktu habis!",false)}});
-  nextTimeout=setTimeout(nextQuestion,800);
+
+
+function showWrong(
+  player,
+  explanation
+){
+
+  const element =
+    player === 1
+    ? feedback1
+    : feedback2;
+
+
+  element.textContent =
+    "💡 " +
+    explanation;
+
+
+  element.className =
+    "feedback wrong";
+
+
+  playSound(false);
+
 }
-function countdown(){
-  return new Promise(resolve=>{
-    let n=3;countdownEl.style.display="flex";countdownEl.textContent=n;
-    const t=setInterval(()=>{n--;if(n<=0){clearInterval(t);countdownEl.style.display="none";resolve()}else countdownEl.textContent=n},650);
-  })
-}
-async function startGame(){
+
+
+/* =====================================================
+   SOUND
+===================================================== */
+
+let audioContext =
+  null;
+
+
+function playSound(
+  correct
+){
+
   try{
-    startButton.disabled=true;status("📷 Mengaktifkan kamera...","info");
-    await cameraStart();
-    status("🖐️ Memuat deteksi tangan...","info");
-    await mediaPipeStart();
-    startScreen.style.display="none";gameScreen.style.display="block";
-    currentQuestion=0;scoreP1=scoreP2=0;updateScores();loadQuestion();
-    await countdown();gameRunning=true;lastTime=0;startTimer();raf=requestAnimationFrame(tick);
-  }catch(e){
-    console.error(e);status("❌ "+(e?.name?e.name+": ":"")+e.message,"error");
-    startButton.disabled=false;
+
+    if(!audioContext){
+
+      audioContext =
+        new (
+          window.AudioContext ||
+          window.webkitAudioContext
+        )();
+
+    }
+
+
+    const oscillator =
+      audioContext
+        .createOscillator();
+
+
+    const gain =
+      audioContext
+        .createGain();
+
+
+    oscillator.connect(gain);
+
+    gain.connect(
+      audioContext.destination
+    );
+
+
+    oscillator.frequency.value =
+      correct
+      ? 720
+      : 180;
+
+
+    oscillator.type =
+      "sine";
+
+
+    gain.gain.setValueAtTime(
+      .0001,
+      audioContext.currentTime
+    );
+
+
+    gain.gain.exponentialRampToValueAtTime(
+      .15,
+      audioContext.currentTime +
+      .01
+    );
+
+
+    gain.gain.exponentialRampToValueAtTime(
+      .0001,
+      audioContext.currentTime +
+      .25
+    );
+
+
+    oscillator.start();
+
+    oscillator.stop(
+      audioContext.currentTime +
+      .26
+    );
+
+  }catch(e){}
+
+}
+
+
+/* =====================================================
+   DRAW GAME
+===================================================== */
+
+function drawGame(
+  result
+){
+
+  const width =
+    canvas.width;
+
+
+  const height =
+    canvas.height;
+
+
+  ctx.clearRect(
+    0,
+    0,
+    width,
+    height
+  );
+
+
+  /*
+    Garis tengah
+  */
+
+  ctx.save();
+
+  ctx.strokeStyle =
+    "rgba(255,255,255,.4)";
+
+  ctx.lineWidth =
+    4;
+
+  ctx.setLineDash(
+    [15,15]
+  );
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    width/2,
+    0
+  );
+
+  ctx.lineTo(
+    width/2,
+    height
+  );
+
+  ctx.stroke();
+
+  ctx.restore();
+
+
+  /*
+    Tangan
+  */
+
+  result.landmarks
+    ?.forEach(
+      (landmarks)=>{
+
+        const palm =
+          getPalm(
+            landmarks
+          );
+
+
+        const open =
+          detectFiveFinger(
+            landmarks
+          );
+
+
+        const player =
+          palm.x < .5
+          ? 1
+          : 2;
+
+
+        players[player].hand = {
+
+          x:palm.x,
+
+          y:palm.y,
+
+          open:open
+
+        };
+
+
+        players[player].open =
+          open;
+
+
+        /*
+          Lingkaran tangan
+        */
+
+        const x =
+          palm.x *
+          width;
+
+
+        const y =
+          palm.y *
+          height;
+
+
+        ctx.beginPath();
+
+
+        ctx.arc(
+          x,
+          y,
+          open
+          ? 55
+          : 38,
+          0,
+          Math.PI*2
+        );
+
+
+        ctx.fillStyle =
+          open
+
+          ?
+
+          (
+            player === 1
+            ? "rgba(34,197,94,.25)"
+            : "rgba(168,85,247,.25)"
+          )
+
+          :
+
+          "rgba(245,158,11,.25)";
+
+
+        ctx.fill();
+
+
+        ctx.strokeStyle =
+          open
+
+          ?
+
+          (
+            player === 1
+            ? "#22c55e"
+            : "#a855f7"
+          )
+
+          :
+
+          "#f59e0b";
+
+
+        ctx.lineWidth =
+          5;
+
+
+        ctx.stroke();
+
+
+        /*
+          Icon tangan
+        */
+
+        ctx.font =
+          "35px Arial";
+
+
+        ctx.textAlign =
+          "center";
+
+
+        ctx.fillStyle =
+          "#ffffff";
+
+
+        ctx.fillText(
+          open
+          ? "🖐️"
+          : "✋",
+          x,
+          y+12
+        );
+
+      }
+    );
+
+
+  /*
+    Update & draw
+    lingkaran jawaban
+  */
+
+  [1,2].forEach(
+    player=>{
+
+      players[player]
+        .bubbles
+        .forEach(
+          bubble=>{
+
+            if(
+              bubble.hit
+            ){
+
+              return;
+
+            }
+
+
+            /*
+              Gerakkan turun
+            */
+
+            bubble.y +=
+              bubble.speed *
+              16;
+
+
+            /*
+              Jika lewat bawah
+            */
+
+            if(
+              bubble.y >
+              1.15
+            ){
+
+              bubble.y =
+                -0.15 -
+                Math.random()*.4;
+
+              bubble.x =
+                player === 1
+                ?
+                .08 +
+                Math.random()*.40
+                :
+                .58 +
+                Math.random()*.34;
+
+            }
+
+
+            /*
+              Collision
+            */
+
+            if(
+              collision(
+                players[player].hand,
+                bubble
+              )
+            ){
+
+              catchAnswer(
+                player,
+                bubble
+              );
+
+            }
+
+
+            /*
+              Draw circle
+            */
+
+            const x =
+              bubble.x *
+              width;
+
+
+            const y =
+              bubble.y *
+              height;
+
+
+            const radius =
+              bubble.radius *
+              Math.min(
+                width,
+                height
+              );
+
+
+            /*
+              Gradient
+            */
+
+            const gradient =
+              ctx.createRadialGradient(
+                x-radius*.35,
+                y-radius*.35,
+                radius*.1,
+                x,
+                y,
+                radius
+              );
+
+
+            if(player === 1){
+
+              gradient.addColorStop(
+                0,
+                "#bbf7d0"
+              );
+
+              gradient.addColorStop(
+                1,
+                "#16a34a"
+              );
+
+            }else{
+
+              gradient.addColorStop(
+                0,
+                "#e9d5ff"
+              );
+
+              gradient.addColorStop(
+                1,
+                "#7e22ce"
+              );
+
+            }
+
+
+            ctx.beginPath();
+
+            ctx.arc(
+              x,
+              y,
+              radius,
+              0,
+              Math.PI*2
+            );
+
+
+            ctx.fillStyle =
+              gradient;
+
+
+            ctx.fill();
+
+
+            ctx.strokeStyle =
+              "#ffffff";
+
+
+            ctx.lineWidth =
+              4;
+
+
+            ctx.stroke();
+
+
+            /*
+              Teks jawaban
+            */
+
+            ctx.fillStyle =
+              "#ffffff";
+
+
+            ctx.font =
+              "900 16px Nunito";
+
+
+            ctx.textAlign =
+              "center";
+
+
+            /*
+              Wrap text
+            */
+
+            const words =
+              bubble.text
+                .split(" ");
+
+
+            const lines =
+              [];
+
+
+            let line =
+              "";
+
+
+            words.forEach(
+              word=>{
+
+                const test =
+                  line
+                  ? line +
+                    " " +
+                    word
+                  : word;
+
+
+                if(
+                  ctx.measureText(
+                    test
+                  ).width >
+                  radius*1.55 &&
+                  line
+                ){
+
+                  lines.push(
+                    line
+                  );
+
+                  line =
+                    word;
+
+                }else{
+
+                  line =
+                    test;
+
+                }
+
+              }
+            );
+
+
+            if(line){
+
+              lines.push(
+                line
+              );
+
+            }
+
+
+            lines
+              .slice(0,3)
+              .forEach(
+                (text,index)=>{
+
+                  ctx.fillText(
+                    text,
+                    x,
+                    y +
+                    (
+                      index -
+                      (
+                        Math.min(
+                          lines.length,
+                          3
+                        )-1
+                      )/2
+                    )*20
+                  );
+
+                }
+              );
+
+          }
+        );
+
+    }
+  );
+
+}
+
+
+/* =====================================================
+   DETECTION LOOP
+===================================================== */
+
+async function gameLoop(){
+
+  if(
+    !gameRunning
+  ){
+
+    return;
+
   }
+
+
+  try{
+
+    const now =
+      performance.now();
+
+
+    const result =
+      handLandmarker
+        .detectForVideo(
+          camera,
+          now
+        );
+
+
+    canvas.width =
+      camera.videoWidth ||
+      1280;
+
+
+    canvas.height =
+      camera.videoHeight ||
+      720;
+
+
+    /*
+      Reset tangan
+    */
+
+    players[1].hand =
+      null;
+
+    players[2].hand =
+      null;
+
+
+    /*
+      Gambar game
+    */
+
+    drawGame(
+      result
+    );
+
+
+  }catch(error){
+
+    console.error(
+      error
+    );
+
+  }
+
+
+  animationFrame =
+    requestAnimationFrame(
+      gameLoop
+    );
+
 }
+
+
+/* =====================================================
+   COUNTDOWN
+===================================================== */
+
+function startCountdown(){
+
+  return new Promise(
+    resolve=>{
+
+      let number =
+        3;
+
+
+      countdown.style.display =
+        "flex";
+
+
+      countdown.textContent =
+        number;
+
+
+      const timer =
+        setInterval(
+          ()=>{
+
+            number--;
+
+
+            if(
+              number <= 0
+            ){
+
+              clearInterval(
+                timer
+              );
+
+
+              countdown.style.display =
+                "none";
+
+
+              resolve();
+
+            }else{
+
+              countdown.textContent =
+                number;
+
+            }
+
+          },
+          700
+        );
+
+    }
+  );
+
+}
+
+
+/* =====================================================
+   START GAME
+===================================================== */
+
+async function startGame(){
+
+  try{
+
+    errorBox.style.display =
+      "none";
+
+
+    startButton.disabled =
+      true;
+
+
+    await startCamera();
+
+
+    await initializeMediaPipe();
+
+
+    startScreen.style.display =
+      "none";
+
+
+    gameScreen.style.display =
+      "block";
+
+
+    currentQuestion =
+      0;
+
+
+    scoreP1 =
+      0;
+
+
+    scoreP2 =
+      0;
+
+
+    updateScores();
+
+
+    loadQuestion();
+
+
+    await startCountdown();
+
+
+    gameRunning =
+      true;
+
+
+    gameLoop();
+
+
+  }catch(error){
+
+    console.error(
+      error
+    );
+
+
+    errorBox.style.display =
+      "block";
+
+
+    errorBox.textContent =
+      "Kamera tidak dapat digunakan. " +
+      "Pastikan Anda memberikan izin kamera " +
+      "dan membuka Web App melalui URL HTTPS.";
+
+
+    startButton.disabled =
+      false;
+
+  }
+
+}
+
+
+/* =====================================================
+   NEXT QUESTION
+===================================================== */
+
 function nextQuestion(){
-  if(currentQuestion>=QUESTIONS.length-1){finish();return}
-  currentQuestion++;gameRunning=true;loadQuestion();startTimer();lastTime=0;raf=requestAnimationFrame(tick)
+
+  currentQuestion++;
+
+
+  if(
+    currentQuestion >=
+    QUESTIONS.length
+  ){
+
+    finishGame();
+
+    return;
+
+  }
+
+
+  loadQuestion();
+
 }
-function finish(){
-  gameRunning=false;if(raf)cancelAnimationFrame(raf);if(stream)stream.getTracks().forEach(t=>t.stop());
-  $("finalScore1").textContent=scoreP1+" POIN";$("finalScore2").textContent=scoreP2+" POIN";
-  $("winner").textContent=scoreP1===scoreP2?"🤝 SERI! Kalian sama-sama hebat!":scoreP1>scoreP2?"🎉 PLAYER 1 MENANG!":"🎉 PLAYER 2 MENANG!";
-  gameScreen.style.display="none";resultScreen.style.display="block";
-  saveScore();
+
+
+/* =====================================================
+   SCORE
+===================================================== */
+
+function updateScores(){
+
+  score1.textContent =
+    scoreP1;
+
+
+  score2.textContent =
+    scoreP2;
+
 }
-function saveScore(){
-  if(!GAS_ENDPOINT)return;
-  const url=GAS_ENDPOINT+"?action=saveScore&p1="+encodeURIComponent(scoreP1)+"&p2="+encodeURIComponent(scoreP2);
-  const img=new Image();img.src=url;
+
+
+/* =====================================================
+   FINISH
+===================================================== */
+
+function finishGame(){
+
+  gameRunning =
+    false;
+
+
+  cancelAnimationFrame(
+    animationFrame
+  );
+
+
+  document
+    .getElementById(
+      "finalScore1"
+    )
+    .textContent =
+      scoreP1 +
+      " POIN";
+
+
+  document
+    .getElementById(
+      "finalScore2"
+    )
+    .textContent =
+      scoreP2 +
+      " POIN";
+
+
+  const winner =
+    document
+      .getElementById(
+        "winner"
+      );
+
+
+  if(
+    scoreP1 ===
+    scoreP2
+  ){
+
+    winner.textContent =
+      "🤝 SERI! Kalian sama-sama hebat!";
+
+  }else if(
+    scoreP1 >
+    scoreP2
+  ){
+
+    winner.textContent =
+      "🎉 PLAYER 1 MENANG!";
+
+  }else{
+
+    winner.textContent =
+      "🎉 PLAYER 2 MENANG!";
+
+  }
+
+
+  gameScreen.style.display =
+    "none";
+
+
+  resultScreen.style.display =
+    "block";
+
 }
-startButton.addEventListener("click",startGame);
-restartButton.addEventListener("click",()=>location.reload());
-window.addEventListener("error",e=>{console.error(e.error||e.message)});
+
+
+/* =====================================================
+   RESTART
+===================================================== */
+
+restartButton
+  .addEventListener(
+    "click",
+    ()=>{
+
+      resultScreen.style.display =
+        "none";
+
+
+      gameScreen.style.display =
+        "block";
+
+
+      currentQuestion =
+        0;
+
+
+      scoreP1 =
+        0;
+
+
+      scoreP2 =
+        0;
+
+
+      updateScores();
+
+
+      loadQuestion();
+
+
+      gameRunning =
+        true;
+
+
+      gameLoop();
+
+    }
+  );
+
+
+/* =====================================================
+   START BUTTON
+===================================================== */
+
+startButton
+  .addEventListener(
+    "click",
+    startGame
+  );
+
+
 </script>
+
 </body>
 </html>
