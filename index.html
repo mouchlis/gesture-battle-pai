@@ -1515,8 +1515,8 @@ function createBubbles(player) {
           Math.random()*0.22,
 
         speed:
-          0.00055 +
-          Math.random()*0.00018,
+          0.00014 +
+          Math.random()*0.00006,
 
         radius:
           0.060,
@@ -1672,7 +1672,7 @@ function collision(hand, bubble){
   const dy = hand.y - bubble.y;
   const distance = Math.sqrt(dx*dx + dy*dy);
 
-  return distance < (0.075 + bubble.radius);
+  return distance < (0.105 + bubble.radius);
 }
 
 function catchAnswer(player, bubble){
@@ -1785,6 +1785,22 @@ function drawGame(result){
     ctx.fillStyle = "#ffffff";
     ctx.fillText("🖐️", hx, hy + 13);
   });
+
+  ctx.save();
+  ctx.font = "800 20px Nunito";
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(
+    players[1].open ? "🖐️ P1 AKTIF" : "P1: buka telapak",
+    width * 0.25,
+    height - 18
+  );
+  ctx.fillText(
+    players[2].open ? "🖐️ P2 AKTIF" : "P2: buka telapak",
+    width * 0.75,
+    height - 18
+  );
+  ctx.restore();
 
   // Jawaban jatuh.
   [1,2].forEach((player)=>{
@@ -1931,7 +1947,7 @@ async function gameLoop(){
     */
 
     drawGame(
-      result
+      latestHandResults
     );
 
 
