@@ -405,7 +405,9 @@ button:active {
 
   height:100%;
 
-  transform:scaleX(-1);
+  /* Jangan mirror canvas.
+     Koordinat tangan sudah dibalik di JavaScript. */
+  transform:none;
 
   pointer-events:none;
 }
@@ -2145,6 +2147,10 @@ function drawGame(
           );
 
 
+        /* Kamera ditampilkan seperti cermin.
+       MediaPipe membaca koordinat video asli,
+       sehingga X perlu dibalik SATU kali agar
+       posisi tangan sesuai dengan tampilan kamera. */
         const displayX = 1 - palm.x;
 
         const player =
