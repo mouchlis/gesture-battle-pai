@@ -1465,45 +1465,52 @@ const players = {
 function createBubbles(player) {
 
   const question = QUESTIONS[currentQuestion];
+  const answers = [...question.answers].sort(() => Math.random() - 0.5);
 
-  const answers = [...question.answers].sort(() => Math.random() - .5);
+  /*
+    6 kartu = 2 kolom x 3 baris.
+    Setiap kartu mendapat "slot" sendiri supaya tidak bertumpuk.
+    Posisi tetap sedikit bergerak di dalam slot agar terasa mengambang.
+  */
+  const cardW = 0.205;
+  const cardH = 0.095;
 
-  const minX = player === 1 ? 0.055 : 0.555;
-  const maxX = player === 1 ? 0.445 : 0.945;
-  const cardW = 0.245;
-  const cardH = 0.105;
+  const leftX  = player === 1 ? 0.045 : 0.545;
+  const rightX = player === 1 ? 0.275 : 0.775;
 
-  players[player].bubbles = answers.map((answer,index) => {
+  const rowsY = [0.10, 0.39, 0.68];
 
-    let x, y, tries = 0;
+  players[player].bubbles = answers.map((answer, index) => {
 
-    // Sebar kartu di berbagai tempat, tetapi tetap di wilayah pemain.
-    do {
-      x = minX + Math.random() * (maxX - minX - cardW);
-      y = 0.08 + Math.random() * 0.76;
-      tries++;
-    } while (
-      tries < 30 &&
-      players[player].bubbles.some(b =>
-        Math.abs((b.x + b.w/2) - (x + cardW/2)) < cardW * 0.82 &&
-        Math.abs((b.y + b.h/2) - (y + cardH/2)) < cardH * 1.25
-      )
-    );
+    const col = index % 2;
+    const row = Math.floor(index / 2);
+
+    const baseX = col === 0 ? leftX : rightX;
+    const baseY = rowsY[row];
 
     return {
       id: player + '_' + currentQuestion + '_' + index + '_' + Date.now(),
       text: answer,
-      x, y,
+
+      x: baseX,
+      y: baseY,
+
+      baseX,
+      baseY,
+
       w: cardW,
       h: cardH,
-      vx: (Math.random() - 0.5) * 0.00011,
-      vy: (Math.random() - 0.5) * 0.00008,
+
+      /* Gerakan kecil dan lambat di dalam slot */
       phase: Math.random() * Math.PI * 2,
-      drift: 0.000035 + Math.random() * 0.000025,
-      hit: false
+      floatSpeed: 0.55 + Math.random() * 0.35,
+      floatX: 0.018 + Math.random() * 0.008,
+      floatY: 0.018 + Math.random() * 0.008,
+
+      hit: false,
+      hovered: false
     };
   });
-
 }
 
 /* =====================================================
@@ -2247,7 +2254,7 @@ function drawGame(
 
   /*
     KARTU JAWABAN GLASSMORPHISM
-    Bergerak lembut/mengambang di berbagai tempat.
+    Putih transparan, tersusun rapi, tidak bertumpuk.
   */
 
   [1,2].forEach(player => {
@@ -2256,37 +2263,43 @@ function drawGame(
 
       if (bubble.hit) return;
 
-      // Gerakan drift + sedikit gelombang supaya terasa hidup,
-      // tetapi tidak terlalu cepat untuk anak kelas 2.
-      bubble.phase += dt * 0.9;
-      bubble.x += bubble.vx * dt * 60;
-      bubble.y += bubble.vy * dt * 60;
-      bubble.x += Math.cos(bubble.phase) * bubble.drift * dt * 60;
-      bubble.y += Math.sin(bubble.phase * 0.83) * bubble.drift * 0.55 * dt * 60;
+      /* Gerakan mengambang kecil di dalam slot masing-masing */
+      bubble.phase += dt * bubble.floatSpeed;
 
+      bubble.x =
+        bubble.baseX +
+        Math.sin(bubble.phase) * bubble.floatX;
+
+      bubble.y =
+        bubble.baseY +
+        Math.cos(bubble.phase * 0.83) * bubble.floatY;
+
+      /* Pastikan kartu tetap berada di area pemain */
       const minX = player === 1 ? 0.025 : 0.525;
       const maxX = player === 1 ? 0.475 : 0.975;
-      const minY = 0.035;
-      const maxY = 0.91;
 
-      if (bubble.x < minX) {
-        bubble.x = minX;
-        bubble.vx = Math.abs(bubble.vx);
-      }
-      if (bubble.x + bubble.w > maxX) {
-        bubble.x = maxX - bubble.w;
-        bubble.vx = -Math.abs(bubble.vx);
-      }
-      if (bubble.y < minY) {
-        bubble.y = minY;
-        bubble.vy = Math.abs(bubble.vy);
-      }
-      if (bubble.y + bubble.h > maxY) {
-        bubble.y = maxY - bubble.h;
-        bubble.vy = -Math.abs(bubble.vy);
-      }
+      bubble.x = Math.max(
+        minX,
+        Math.min(maxX - bubble.w, bubble.x)
+      );
 
-      if (collision(players[player].hand, bubble)) {
+      bubble.y = Math.max(
+        0.035,
+        Math.min(0.91 - bubble.h, bubble.y)
+      );
+
+      /*
+        Hover:
+        telapak berada di atas kartu.
+        Kartu berubah menjadi kuning sebelum ditangkap.
+      */
+      bubble.hovered =
+        collision(
+          players[player].hand,
+          bubble
+        );
+
+      if (bubble.hovered) {
         catchAnswer(player, bubble);
         return;
       }
@@ -2295,79 +2308,160 @@ function drawGame(
       const y = bubble.y * height;
       const w = bubble.w * width;
       const h = bubble.h * height;
-      const r = Math.min(22, h * 0.28);
+      const r = Math.min(20, h * 0.30);
 
-      // Shadow
       ctx.save();
-      ctx.shadowColor = player === 1
-        ? 'rgba(16,185,129,.25)'
-        : 'rgba(139,92,246,.28)';
-      ctx.shadowBlur = 18;
-      ctx.shadowOffsetY = 6;
 
-      // Glass body
-      const glass = ctx.createLinearGradient(x, y, x, y + h);
-      if (player === 1) {
-        glass.addColorStop(0, 'rgba(255,255,255,.38)');
-        glass.addColorStop(0.5, 'rgba(16,185,129,.20)');
-        glass.addColorStop(1, 'rgba(15,118,110,.32)');
-      } else {
-        glass.addColorStop(0, 'rgba(255,255,255,.40)');
-        glass.addColorStop(0.5, 'rgba(168,85,247,.20)');
-        glass.addColorStop(1, 'rgba(91,33,182,.32)');
-      }
+      /*
+        GLASS PUTIH
+      */
+      ctx.shadowColor = 'rgba(0,0,0,.16)';
+      ctx.shadowBlur = 16;
+      ctx.shadowOffsetY = 5;
+
+      const glass = ctx.createLinearGradient(
+        x, y,
+        x, y + h
+      );
+
+      glass.addColorStop(
+        0,
+        'rgba(255,255,255,.72)'
+      );
+
+      glass.addColorStop(
+        0.45,
+        'rgba(255,255,255,.42)'
+      );
+
+      glass.addColorStop(
+        1,
+        'rgba(255,255,255,.28)'
+      );
 
       ctx.beginPath();
-      ctx.roundRect(x, y, w, h, r);
+      ctx.roundRect(
+        x,
+        y,
+        w,
+        h,
+        r
+      );
+
       ctx.fillStyle = glass;
       ctx.fill();
+
       ctx.shadowColor = 'transparent';
 
-      // Border glass
-      ctx.strokeStyle = 'rgba(255,255,255,.72)';
+      /*
+        BORDER PUTIH
+      */
+      ctx.strokeStyle =
+        'rgba(255,255,255,.92)';
+
       ctx.lineWidth = 2.5;
       ctx.stroke();
 
-      // Highlight strip
+      /*
+        Highlight glass
+      */
       ctx.beginPath();
-      ctx.roundRect(x + 7, y + 6, w - 14, Math.max(7, h * 0.16), r * 0.55);
-      ctx.fillStyle = 'rgba(255,255,255,.18)';
+
+      ctx.roundRect(
+        x + 6,
+        y + 5,
+        w - 12,
+        Math.max(6, h * .17),
+        r * .5
+      );
+
+      ctx.fillStyle =
+        'rgba(255,255,255,.35)';
+
       ctx.fill();
 
-      // Text
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '900 18px Nunito';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.shadowColor = 'rgba(0,0,0,.28)';
-      ctx.shadowBlur = 5;
+      /*
+        TEKS
+        Dibuat gelap supaya tetap terbaca
+        di atas kartu putih transparan.
+      */
+      ctx.fillStyle = '#17343a';
 
-      const words = bubble.text.split(' ');
+      ctx.font =
+        '900 18px Nunito';
+
+      ctx.textAlign =
+        'center';
+
+      ctx.textBaseline =
+        'middle';
+
+      ctx.shadowColor =
+        'rgba(255,255,255,.75)';
+
+      ctx.shadowBlur = 3;
+
+      const words =
+        bubble.text.split(' ');
+
       const lines = [];
       let line = '';
-      const maxTextWidth = w * 0.84;
+
+      const maxTextWidth =
+        w * .84;
 
       words.forEach(word => {
-        const test = line ? line + ' ' + word : word;
-        if (ctx.measureText(test).width > maxTextWidth && line) {
+
+        const test =
+          line
+          ? line + ' ' + word
+          : word;
+
+        if (
+          ctx.measureText(test).width >
+          maxTextWidth &&
+          line
+        ) {
+
           lines.push(line);
           line = word;
-        } else {
-          line = test;
-        }
-      });
-      if (line) lines.push(line);
 
-      const shown = lines.slice(0, 2);
-      const lineH = 22;
-      const startY = y + h/2 - ((shown.length - 1) * lineH)/2;
+        } else {
+
+          line = test;
+
+        }
+
+      });
+
+      if (line) {
+        lines.push(line);
+      }
+
+      const shown =
+        lines.slice(0, 2);
+
+      const lineH = 21;
+
+      const startY =
+        y +
+        h/2 -
+        ((shown.length - 1) * lineH)/2;
+
       shown.forEach((text, i) => {
-        ctx.fillText(text, x + w/2, startY + i * lineH);
+
+        ctx.fillText(
+          text,
+          x + w/2,
+          startY + i * lineH
+        );
+
       });
 
       ctx.restore();
 
     });
+
   });
 
 }
