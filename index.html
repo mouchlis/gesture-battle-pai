@@ -1470,60 +1470,106 @@ function createBubbles(player) {
     .sort(() => Math.random() - 0.5);
 
   /*
-    Setiap pemain mendapat 6 lingkaran.
-    Posisi X dibuat tersebar, sedangkan Y dimulai
-    dari atas agar lingkaran jatuh perlahan seperti
-    game gesture pada contoh video.
+    6 target disusun dalam 3 jalur horizontal x 2 gelombang.
+    Semua target memakai kecepatan yang sama agar tidak saling
+    mengejar dan bertumpuk ketika jatuh.
   */
+  const xSlots =
+    player === 1
+      ? [0.12, 0.25, 0.38]
+      : [0.62, 0.75, 0.88];
+
+  const ySlots = [
+    -0.08, -0.08, -0.08,
+    -0.58, -0.58, -0.58
+  ];
+
+  const palette =
+    player === 1
+      ? [
+          "#06b6d4", // cyan
+          "#22c55e", // green
+          "#3b82f6", // blue
+          "#14b8a6", // teal
+          "#0ea5e9", // sky
+          "#10b981"  // emerald
+        ]
+      : [
+          "#f97316", // orange
+          "#ec4899", // pink
+          "#8b5cf6", // violet
+          "#f43f5e", // rose
+          "#a855f7", // purple
+          "#fb7185"  // coral
+        ];
+
   players[player].bubbles = answers.map((answer, index) => {
 
-    const minX = player === 1 ? 0.08 : 0.58;
-    const maxX = player === 1 ? 0.42 : 0.92;
-
     return {
-      id: player + "_" + currentQuestion + "_" +
-          index + "_" + Date.now(),
+      id:
+        player + "_" +
+        currentQuestion + "_" +
+        index + "_" +
+        Date.now(),
 
       text: answer,
 
-      x: minX + Math.random() * (maxX - minX),
+      x: xSlots[index % 3],
 
-      /* Sebagian muncul sedikit lebih awal/terlambat */
-      y: -0.12 - (index * 0.13) - Math.random() * 0.10,
+      y: ySlots[index],
 
-      /* Sangat pelan agar anak kelas 2 mudah mengejar */
-      speed: 0.035 + Math.random() * 0.018,
+      /*
+        Semua target jatuh dengan kecepatan sama.
+        Sedikit variasi saja agar tidak terlihat kaku,
+        tetapi tetap menjaga jarak.
+      */
+      speed: 0.034,
 
-      radius: 0.055,
+      radius: 0.052,
 
-      phase: Math.random() * Math.PI * 2,
+      phase:
+        (index % 3) * 0.9,
 
-      /* Sedikit goyang kiri-kanan */
-      drift: 0.010 + Math.random() * 0.012,
+      drift: 0.0035,
+
+      color:
+        palette[index],
 
       hit: false,
-      hovered: false
+
+      hovered: false,
+
+      hoverStart: 0
     };
   });
 }
 
 function resetBubblePosition(player, bubble) {
 
-  const minX = player === 1 ? 0.08 : 0.58;
-  const maxX = player === 1 ? 0.42 : 0.92;
+  const xSlots =
+    player === 1
+      ? [0.12, 0.25, 0.38]
+      : [0.62, 0.75, 0.88];
 
   bubble.x =
-    minX + Math.random() * (maxX - minX);
+    xSlots[
+      Math.floor(Math.random() * xSlots.length)
+    ];
 
   bubble.y =
-    -0.12 - Math.random() * 0.30;
+    -0.15 - Math.random() * 0.12;
 
   bubble.speed =
-    0.035 + Math.random() * 0.018;
+    0.034;
 
   bubble.phase =
     Math.random() * Math.PI * 2;
 
+  bubble.hovered =
+    false;
+
+  bubble.hoverStart =
+    0;
 }
 
 /* =====================================================
@@ -2358,14 +2404,12 @@ function drawGame(
         Saat tangan mendekat: kuning terang.
       */
       const playerColor =
-        player === 1
-        ? "#22c55e"
-        : "#a855f7";
+        bubble.color;
 
       const playerColorSoft =
         player === 1
-        ? "rgba(34,197,94,.34)"
-        : "rgba(168,85,247,.34)";
+        ? "rgba(255,255,255,.22)"
+        : "rgba(255,255,255,.22)";
 
       ctx.beginPath();
 
@@ -2397,9 +2441,25 @@ function drawGame(
           18;
 
         ctx.fillStyle =
-          playerColorSoft;
+          playerColor;
 
       }
+
+      ctx.fill();
+
+      /* Lapisan glass putih transparan */
+      ctx.beginPath();
+
+      ctx.arc(
+        x - radius * .20,
+        y - radius * .22,
+        radius * .62,
+        0,
+        Math.PI * 2
+      );
+
+      ctx.fillStyle =
+        "rgba(255,255,255,.22)";
 
       ctx.fill();
 
@@ -2411,7 +2471,7 @@ function drawGame(
       ctx.strokeStyle =
         bubble.hovered
         ? "#facc15"
-        : playerColor;
+        : "rgba(255,255,255,.95)";
 
       ctx.lineWidth =
         bubble.hovered ? 6 : 3;
@@ -2462,7 +2522,15 @@ function drawGame(
       ctx.fillStyle =
         bubble.hovered
         ? "#4a3500"
-        : playerColor;
+        : "#ffffff";
+
+      ctx.shadowColor =
+        bubble.hovered
+        ? "rgba(255,255,255,.75)"
+        : "rgba(0,0,0,.35)";
+
+      ctx.shadowBlur =
+        bubble.hovered ? 4 : 5;
 
       ctx.font =
         "900 15px Nunito";
