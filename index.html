@@ -1809,17 +1809,22 @@ function getPalm(lm) {
 
 function collision(hand, bubble) {
 
-  if (!hand || !bubble || !hand.open || bubble.hit) return false;
+  if (!hand || !bubble || !hand.open || bubble.hit) {
+    return false;
+  }
 
-  const padX = 0.045;
-  const padY = 0.055;
+  const dx = hand.x - bubble.x;
+  const dy = hand.y - bubble.y;
+  const distance = Math.hypot(dx, dy);
 
-  return (
-    hand.x >= bubble.x - padX &&
-    hand.x <= bubble.x + bubble.w + padX &&
-    hand.y >= bubble.y - padY &&
-    hand.y <= bubble.y + bubble.h + padY
-  );
+  /*
+    Area tangkap diperbesar agar anak tidak perlu
+    mengarahkan telapak secara sangat presisi.
+  */
+  const handRadius = 0.095;
+  const targetRadius = bubble.radius * 1.15;
+
+  return distance <= handRadius + targetRadius;
 }
 
 /* =====================================================
@@ -2315,9 +2320,24 @@ function drawGame(
           bubble
         );
 
+      /* Efek hover terlihat dahulu; tangkap setelah
+         tangan berada di target selama beberapa frame. */
       if (bubble.hovered) {
-        catchAnswer(player, bubble);
-        return;
+
+        bubble.hoverStart =
+          bubble.hoverStart || performance.now();
+
+        if (
+          performance.now() - bubble.hoverStart >= 180
+        ) {
+          catchAnswer(player, bubble);
+          return;
+        }
+
+      } else {
+
+        bubble.hoverStart = 0;
+
       }
 
       const x =
@@ -2337,6 +2357,16 @@ function drawGame(
         Normal: glass putih transparan.
         Saat tangan mendekat: kuning terang.
       */
+      const playerColor =
+        player === 1
+        ? "#22c55e"
+        : "#a855f7";
+
+      const playerColorSoft =
+        player === 1
+        ? "rgba(34,197,94,.34)"
+        : "rgba(168,85,247,.34)";
+
       ctx.beginPath();
 
       ctx.arc(
@@ -2350,10 +2380,10 @@ function drawGame(
       if (bubble.hovered) {
 
         ctx.shadowColor =
-          "rgba(250,204,21,.95)";
+          "rgba(250,204,21,.98)";
 
         ctx.shadowBlur =
-          30;
+          38;
 
         ctx.fillStyle =
           "rgba(250,204,21,.82)";
@@ -2367,7 +2397,7 @@ function drawGame(
           18;
 
         ctx.fillStyle =
-          "rgba(255,255,255,.52)";
+          playerColorSoft;
 
       }
 
@@ -2381,12 +2411,32 @@ function drawGame(
       ctx.strokeStyle =
         bubble.hovered
         ? "#facc15"
-        : "rgba(255,255,255,.95)";
+        : playerColor;
 
       ctx.lineWidth =
         bubble.hovered ? 6 : 3;
 
       ctx.stroke();
+
+      if (bubble.hovered) {
+
+        ctx.beginPath();
+
+        ctx.arc(
+          x,
+          y,
+          radius + 10,
+          0,
+          Math.PI * 2
+        );
+
+        ctx.strokeStyle =
+          "rgba(250,204,21,.75)";
+
+        ctx.lineWidth = 4;
+
+        ctx.stroke();
+      }
 
       /*
         Highlight glass
@@ -2412,7 +2462,7 @@ function drawGame(
       ctx.fillStyle =
         bubble.hovered
         ? "#4a3500"
-        : "#17343a";
+        : playerColor;
 
       ctx.font =
         "900 15px Nunito";
