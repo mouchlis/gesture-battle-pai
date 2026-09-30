@@ -1465,59 +1465,65 @@ const players = {
 function createBubbles(player) {
 
   const question = QUESTIONS[currentQuestion];
-  const answers = [...question.answers].sort(() => Math.random() - 0.5);
+
+  const answers = [...question.answers]
+    .sort(() => Math.random() - 0.5);
 
   /*
-    Posisi tersebar seperti game gesture contoh.
-    Kartu tidak jatuh lurus dan tidak menumpuk.
+    Setiap pemain mendapat 6 lingkaran.
+    Posisi X dibuat tersebar, sedangkan Y dimulai
+    dari atas agar lingkaran jatuh perlahan seperti
+    game gesture pada contoh video.
   */
-  const slots = player === 1
-    ? [
-        [0.055, 0.08],
-        [0.285, 0.15],
-        [0.105, 0.35],
-        [0.305, 0.46],
-        [0.045, 0.66],
-        [0.275, 0.73]
-      ]
-    : [
-        [0.515, 0.15],
-        [0.745, 0.08],
-        [0.535, 0.46],
-        [0.755, 0.34],
-        [0.515, 0.73],
-        [0.745, 0.66]
-      ];
-
-  const cardW = 0.19;
-  const cardH = 0.095;
-
   players[player].bubbles = answers.map((answer, index) => {
 
-    const [baseX, baseY] = slots[index];
+    const minX = player === 1 ? 0.08 : 0.58;
+    const maxX = player === 1 ? 0.42 : 0.92;
 
     return {
-      id: `${player}_${currentQuestion}_${index}_${Date.now()}`,
+      id: player + "_" + currentQuestion + "_" +
+          index + "_" + Date.now(),
+
       text: answer,
 
-      x: baseX,
-      y: baseY,
-      baseX,
-      baseY,
+      x: minX + Math.random() * (maxX - minX),
 
-      w: cardW,
-      h: cardH,
+      /* Sebagian muncul sedikit lebih awal/terlambat */
+      y: -0.12 - (index * 0.13) - Math.random() * 0.10,
+
+      /* Sangat pelan agar anak kelas 2 mudah mengejar */
+      speed: 0.035 + Math.random() * 0.018,
+
+      radius: 0.055,
 
       phase: Math.random() * Math.PI * 2,
-      floatSpeed: 0.35 + Math.random() * 0.22,
-      floatX: 0.012 + Math.random() * 0.008,
-      floatY: 0.014 + Math.random() * 0.008,
+
+      /* Sedikit goyang kiri-kanan */
+      drift: 0.010 + Math.random() * 0.012,
 
       hit: false,
-      hovered: false,
-      hoverStart: 0
+      hovered: false
     };
   });
+}
+
+function resetBubblePosition(player, bubble) {
+
+  const minX = player === 1 ? 0.08 : 0.58;
+  const maxX = player === 1 ? 0.42 : 0.92;
+
+  bubble.x =
+    minX + Math.random() * (maxX - minX);
+
+  bubble.y =
+    -0.12 - Math.random() * 0.30;
+
+  bubble.speed =
+    0.035 + Math.random() * 0.018;
+
+  bubble.phase =
+    Math.random() * Math.PI * 2;
+
 }
 
 /* =====================================================
@@ -2259,45 +2265,49 @@ function drawGame(
 
 
   /*
-    KARTU JAWABAN GLASSMORPHISM
-    Putih transparan, tersusun rapi, tidak bertumpuk.
+    LINGKARAN JAWABAN — FALLING GAME
+
+    Lingkaran jatuh perlahan dari atas seperti contoh video.
+    Posisi X tersebar di area masing-masing pemain.
+    Saat telapak mendekat, lingkaran berubah kuning/glow.
   */
 
-  [1,2].forEach(player => {
+  [1, 2].forEach(player => {
 
     players[player].bubbles.forEach(bubble => {
 
       if (bubble.hit) return;
 
-      /* Gerakan mengambang kecil di dalam slot masing-masing */
-      bubble.phase += dt * bubble.floatSpeed;
+      /* Gerak turun berbasis waktu, bukan frame */
+      bubble.y += bubble.speed * dt;
 
-      bubble.x =
-        bubble.baseX +
-        Math.sin(bubble.phase) * bubble.floatX;
+      /* Gerakan kecil kiri-kanan */
+      bubble.phase += dt * 1.8;
 
-      bubble.y =
-        bubble.baseY +
-        Math.cos(bubble.phase * 0.83) * bubble.floatY;
+      bubble.x +=
+        Math.sin(bubble.phase) *
+        bubble.drift *
+        dt;
 
-      /* Pastikan kartu tetap berada di area pemain */
-      const minX = player === 1 ? 0.025 : 0.525;
-      const maxX = player === 1 ? 0.475 : 0.975;
+      const minX = player === 1 ? 0.075 : 0.575;
+      const maxX = player === 1 ? 0.425 : 0.925;
 
-      bubble.x = Math.max(
-        minX,
-        Math.min(maxX - bubble.w, bubble.x)
-      );
+      if (bubble.x < minX) {
+        bubble.x = minX;
+      }
 
-      bubble.y = Math.max(
-        0.035,
-        Math.min(0.91 - bubble.h, bubble.y)
-      );
+      if (bubble.x > maxX) {
+        bubble.x = maxX;
+      }
+
+      /* Jika sudah melewati bawah, jatuhkan lagi dari atas */
+      if (bubble.y > 1.10) {
+        resetBubblePosition(player, bubble);
+      }
 
       /*
-        Hover:
-        telapak berada di atas kartu.
-        Kartu berubah menjadi kuning sebelum ditangkap.
+        Hover / target:
+        telapak cukup dekat dengan lingkaran.
       */
       bubble.hovered =
         collision(
@@ -2305,74 +2315,77 @@ function drawGame(
           bubble
         );
 
-      /*
-        Hover kuning terlebih dahulu.
-        Setelah telapak berada di target selama 0,30 detik,
-        kartu baru ditangkap.
-      */
       if (bubble.hovered) {
-        if (!bubble.hoverStart) {
-          bubble.hoverStart = performance.now();
-        }
-      } else {
-        bubble.hoverStart = 0;
+        catchAnswer(player, bubble);
+        return;
       }
 
-      const x = bubble.x * width;
-      const y = bubble.y * height;
-      const w = bubble.w * width;
-      const h = bubble.h * height;
-      const r = Math.min(20, h * 0.30);
+      const x =
+        bubble.x * width;
+
+      const y =
+        bubble.y * height;
+
+      const radius =
+        bubble.radius *
+        Math.min(width, height);
 
       ctx.save();
 
       /*
-        GLASS PUTIH
+        Efek glow.
+        Normal: glass putih transparan.
+        Saat tangan mendekat: kuning terang.
       */
-      ctx.shadowColor = bubble.hovered
-        ? 'rgba(255,210,0,.85)'
-        : 'rgba(0,0,0,.16)';
-      ctx.shadowBlur = bubble.hovered ? 28 : 16;
-      ctx.shadowOffsetY = bubble.hovered ? 0 : 5;
+      ctx.beginPath();
 
-      const glass = ctx.createLinearGradient(
-        x, y,
-        x, y + h
+      ctx.arc(
+        x,
+        y,
+        radius,
+        0,
+        Math.PI * 2
       );
 
       if (bubble.hovered) {
-        glass.addColorStop(0, 'rgba(255,235,80,.96)');
-        glass.addColorStop(.45, 'rgba(255,214,10,.72)');
-        glass.addColorStop(1, 'rgba(255,193,7,.48)');
+
+        ctx.shadowColor =
+          "rgba(250,204,21,.95)";
+
+        ctx.shadowBlur =
+          30;
+
+        ctx.fillStyle =
+          "rgba(250,204,21,.82)";
+
       } else {
-        glass.addColorStop(0, 'rgba(255,255,255,.76)');
-        glass.addColorStop(.45, 'rgba(255,255,255,.46)');
-        glass.addColorStop(1, 'rgba(255,255,255,.30)');
+
+        ctx.shadowColor =
+          "rgba(255,255,255,.40)";
+
+        ctx.shadowBlur =
+          18;
+
+        ctx.fillStyle =
+          "rgba(255,255,255,.52)";
+
       }
 
-      ctx.beginPath();
-      ctx.roundRect(
-        x,
-        y,
-        w,
-        h,
-        r
-      );
-
-      ctx.fillStyle = glass;
       ctx.fill();
 
-      ctx.shadowColor = 'transparent';
-
       /*
-        BORDER PUTIH
+        Border
       */
+      ctx.shadowBlur = 0;
+
       ctx.strokeStyle =
         bubble.hovered
-        ? '#ffd000'
-        : 'rgba(255,255,255,.95)';
+        ? "#facc15"
+        : "rgba(255,255,255,.95)";
 
-      ctx.lineWidth = bubble.hovered ? 5 : 2.5;
+      ctx.lineWidth =
+        bubble.hovered ? 6 : 3;
+
       ctx.stroke();
 
       /*
@@ -2380,59 +2393,56 @@ function drawGame(
       */
       ctx.beginPath();
 
-      ctx.roundRect(
-        x + 6,
-        y + 5,
-        w - 12,
-        Math.max(6, h * .17),
-        r * .5
+      ctx.arc(
+        x - radius * .25,
+        y - radius * .25,
+        radius * .58,
+        0,
+        Math.PI * 2
       );
 
       ctx.fillStyle =
-        'rgba(255,255,255,.35)';
+        "rgba(255,255,255,.16)";
 
       ctx.fill();
 
       /*
-        TEKS
-        Dibuat gelap supaya tetap terbaca
-        di atas kartu putih transparan.
+        Teks jawaban
       */
-      ctx.fillStyle = '#17343a';
+      ctx.fillStyle =
+        bubble.hovered
+        ? "#4a3500"
+        : "#17343a";
 
       ctx.font =
-        '900 18px Nunito';
+        "900 15px Nunito";
 
       ctx.textAlign =
-        'center';
+        "center";
 
       ctx.textBaseline =
-        'middle';
-
-      ctx.shadowColor =
-        'rgba(255,255,255,.75)';
-
-      ctx.shadowBlur = 3;
+        "middle";
 
       const words =
-        bubble.text.split(' ');
+        bubble.text.split(" ");
 
       const lines = [];
-      let line = '';
 
-      const maxTextWidth =
-        w * .84;
+      let line = "";
+
+      const maxWidth =
+        radius * 1.48;
 
       words.forEach(word => {
 
         const test =
           line
-          ? line + ' ' + word
+          ? line + " " + word
           : word;
 
         if (
           ctx.measureText(test).width >
-          maxTextWidth &&
+          maxWidth &&
           line
         ) {
 
@@ -2452,35 +2462,25 @@ function drawGame(
       }
 
       const shown =
-        lines.slice(0, 2);
+        lines.slice(0, 3);
 
-      const lineH = 21;
+      const lineHeight =
+        Math.max(16, radius * .50);
 
-      const startY =
-        y +
-        h/2 -
-        ((shown.length - 1) * lineH)/2;
+      const firstY =
+        y -
+        ((shown.length - 1) *
+          lineHeight) / 2;
 
       shown.forEach((text, i) => {
 
         ctx.fillText(
           text,
-          x + w/2,
-          startY + i * lineH
+          x,
+          firstY + i * lineHeight
         );
 
       });
-
-      /* Tangkap setelah efek hover kuning terlihat */
-      if (
-        bubble.hovered &&
-        bubble.hoverStart &&
-        performance.now() - bubble.hoverStart >= 300
-      ) {
-        ctx.restore();
-        catchAnswer(player, bubble);
-        return;
-      }
 
       ctx.restore();
 
