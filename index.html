@@ -1468,47 +1468,54 @@ function createBubbles(player) {
   const answers = [...question.answers].sort(() => Math.random() - 0.5);
 
   /*
-    6 kartu = 2 kolom x 3 baris.
-    Setiap kartu mendapat "slot" sendiri supaya tidak bertumpuk.
-    Posisi tetap sedikit bergerak di dalam slot agar terasa mengambang.
+    Posisi tersebar seperti game gesture contoh.
+    Kartu tidak jatuh lurus dan tidak menumpuk.
   */
-  const cardW = 0.205;
+  const slots = player === 1
+    ? [
+        [0.055, 0.08],
+        [0.285, 0.15],
+        [0.105, 0.35],
+        [0.305, 0.46],
+        [0.045, 0.66],
+        [0.275, 0.73]
+      ]
+    : [
+        [0.515, 0.15],
+        [0.745, 0.08],
+        [0.535, 0.46],
+        [0.755, 0.34],
+        [0.515, 0.73],
+        [0.745, 0.66]
+      ];
+
+  const cardW = 0.19;
   const cardH = 0.095;
-
-  const leftX  = player === 1 ? 0.045 : 0.545;
-  const rightX = player === 1 ? 0.275 : 0.775;
-
-  const rowsY = [0.10, 0.39, 0.68];
 
   players[player].bubbles = answers.map((answer, index) => {
 
-    const col = index % 2;
-    const row = Math.floor(index / 2);
-
-    const baseX = col === 0 ? leftX : rightX;
-    const baseY = rowsY[row];
+    const [baseX, baseY] = slots[index];
 
     return {
-      id: player + '_' + currentQuestion + '_' + index + '_' + Date.now(),
+      id: `${player}_${currentQuestion}_${index}_${Date.now()}`,
       text: answer,
 
       x: baseX,
       y: baseY,
-
       baseX,
       baseY,
 
       w: cardW,
       h: cardH,
 
-      /* Gerakan kecil dan lambat di dalam slot */
       phase: Math.random() * Math.PI * 2,
-      floatSpeed: 0.55 + Math.random() * 0.35,
-      floatX: 0.018 + Math.random() * 0.008,
-      floatY: 0.018 + Math.random() * 0.008,
+      floatSpeed: 0.35 + Math.random() * 0.22,
+      floatX: 0.012 + Math.random() * 0.008,
+      floatY: 0.014 + Math.random() * 0.008,
 
       hit: false,
-      hovered: false
+      hovered: false,
+      hoverStart: 0
     };
   });
 }
@@ -1798,9 +1805,8 @@ function collision(hand, bubble) {
 
   if (!hand || !bubble || !hand.open || bubble.hit) return false;
 
-  // Area tangkap diperlebar sedikit agar anak mudah mengenai kartu.
-  const padX = 0.055;
-  const padY = 0.075;
+  const padX = 0.045;
+  const padY = 0.055;
 
   return (
     hand.x >= bubble.x - padX &&
@@ -2299,9 +2305,17 @@ function drawGame(
           bubble
         );
 
+      /*
+        Hover kuning terlebih dahulu.
+        Setelah telapak berada di target selama 0,30 detik,
+        kartu baru ditangkap.
+      */
       if (bubble.hovered) {
-        catchAnswer(player, bubble);
-        return;
+        if (!bubble.hoverStart) {
+          bubble.hoverStart = performance.now();
+        }
+      } else {
+        bubble.hoverStart = 0;
       }
 
       const x = bubble.x * width;
@@ -2315,29 +2329,26 @@ function drawGame(
       /*
         GLASS PUTIH
       */
-      ctx.shadowColor = 'rgba(0,0,0,.16)';
-      ctx.shadowBlur = 16;
-      ctx.shadowOffsetY = 5;
+      ctx.shadowColor = bubble.hovered
+        ? 'rgba(255,210,0,.85)'
+        : 'rgba(0,0,0,.16)';
+      ctx.shadowBlur = bubble.hovered ? 28 : 16;
+      ctx.shadowOffsetY = bubble.hovered ? 0 : 5;
 
       const glass = ctx.createLinearGradient(
         x, y,
         x, y + h
       );
 
-      glass.addColorStop(
-        0,
-        'rgba(255,255,255,.72)'
-      );
-
-      glass.addColorStop(
-        0.45,
-        'rgba(255,255,255,.42)'
-      );
-
-      glass.addColorStop(
-        1,
-        'rgba(255,255,255,.28)'
-      );
+      if (bubble.hovered) {
+        glass.addColorStop(0, 'rgba(255,235,80,.96)');
+        glass.addColorStop(.45, 'rgba(255,214,10,.72)');
+        glass.addColorStop(1, 'rgba(255,193,7,.48)');
+      } else {
+        glass.addColorStop(0, 'rgba(255,255,255,.76)');
+        glass.addColorStop(.45, 'rgba(255,255,255,.46)');
+        glass.addColorStop(1, 'rgba(255,255,255,.30)');
+      }
 
       ctx.beginPath();
       ctx.roundRect(
@@ -2357,9 +2368,11 @@ function drawGame(
         BORDER PUTIH
       */
       ctx.strokeStyle =
-        'rgba(255,255,255,.92)';
+        bubble.hovered
+        ? '#ffd000'
+        : 'rgba(255,255,255,.95)';
 
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = bubble.hovered ? 5 : 2.5;
       ctx.stroke();
 
       /*
@@ -2457,6 +2470,17 @@ function drawGame(
         );
 
       });
+
+      /* Tangkap setelah efek hover kuning terlihat */
+      if (
+        bubble.hovered &&
+        bubble.hoverStart &&
+        performance.now() - bubble.hoverStart >= 300
+      ) {
+        ctx.restore();
+        catchAnswer(player, bubble);
+        return;
+      }
 
       ctx.restore();
 
